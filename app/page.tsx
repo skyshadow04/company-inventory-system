@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import Navbar from "@/components/navbar/navbar";
-
 export default function Home() {
   const [offset, setOffset] = useState(0);
 
@@ -21,7 +19,6 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
       <section id="home" className="relative flex min-h-[100vh] items-center justify-center overflow-hidden">
         <div
           className="absolute inset-0 scale-110 bg-cover bg-center"
