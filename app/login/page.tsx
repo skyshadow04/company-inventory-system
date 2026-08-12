@@ -28,7 +28,7 @@ export default function LoginPage() {
                 if (!mounted) return;
 
                 if (data?.authenticated) {
-                    router.replace("/dashboard");
+                    router.replace("/inventoryDashboard");
                     return;
                 }
             } catch (err) {
@@ -68,7 +68,7 @@ export default function LoginPage() {
 
             // Mark auth as pending so the navbar waits for the new session cookie.
             window.sessionStorage.setItem("authPending", "true");
-            window.location.assign("/dashboard");
+            window.location.assign("/inventoryDashboard");
         } catch (err: any) {
             setError(err?.message || "Network error");
             setLoading(false);

@@ -12,7 +12,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/login";
-  const isDashboardPage = pathname?.startsWith("/dashboard");
+  const isDashboardPage = pathname?.startsWith("/inventoryDashboard");
   async function handleLogout() {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -152,12 +152,12 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               {!isDashboardPage && (
-                <a href="/dashboard" className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+                <a href="/inventoryDashboard" className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
                   Dashboard
                 </a>
               )}
               {user && (
-                <a href="/profile" className="text-sm font-medium text-sky-700 font-mono pr-2 hover:underline">
+                <a href="/inventoryDashboard/profile" className="text-sm font-medium text-sky-700 font-mono pr-2 hover:underline">
                   Hi, {user.name}
                 </a>
               )}
@@ -212,7 +212,7 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               {!isDashboardPage && (
-                <a href="/dashboard" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+                <a href="/inventoryDashboard" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
                   Dashboard
                 </a>
               )}

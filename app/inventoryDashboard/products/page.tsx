@@ -17,7 +17,7 @@ export default function ProductsPage() {
             Add items through the dashboard or import them from your database.
           </p>
           <Link
-            href="/dashboard"
+            href="/inventoryDashboard"
             className="mt-5 inline-flex rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
           >
             Back to Dashboard
