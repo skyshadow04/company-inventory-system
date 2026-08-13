@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -10,8 +11,38 @@ interface SupplierOption {
   supplier_name: string;
 }
 
-export default function AddInventoryItemPage() {
+interface ItemData {
+  item_id: number;
+  item_name: string;
+  item_serial_number: string;
+  item_code: string;
+  item_type: string;
+  item_quantity: number;
+  item_price: string;
+  item_description: string;
+  item_file_link: string;
+  item_file_photo_link: string;
+  item_delivery_date: string;
+  supplier_id: number;
+}
+
+function getFileNameFromUrl(url: string) {
+  if (!url) {
+    return "";
+  }
+
+  try {
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() ?? url);
+  } catch {
+    return url;
+  }
+}
+
+export default function EditInventoryItemPage() {
   const router = useRouter();
+  const params = useParams();
+  const itemId = Number(params?.itemId);
+
   const [itemName, setItemName] = useState("");
   const [itemSerialNumber, setItemSerialNumber] = useState("");
   const [itemCode, setItemCode] = useState("");
@@ -19,12 +50,17 @@ export default function AddInventoryItemPage() {
   const [itemQuantity, setItemQuantity] = useState(0);
   const [itemPrice, setItemPrice] = useState("");
   const [itemDescription, setItemDescription] = useState("");
-  const [itemFile, setItemFile] = useState<File | null>(null);
-  const [itemPhoto, setItemPhoto] = useState<File | null>(null);
   const [itemDeliveryDate, setItemDeliveryDate] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [itemFile, setItemFile] = useState<File | null>(null);
+  const [itemPhoto, setItemPhoto] = useState<File | null>(null);
+  const [removeItemFile, setRemoveItemFile] = useState(false);
+  const [removeItemPhoto, setRemoveItemPhoto] = useState(false);
+  const [currentItemFileLink, setCurrentItemFileLink] = useState("");
+  const [currentItemPhotoLink, setCurrentItemPhotoLink] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +71,7 @@ export default function AddInventoryItemPage() {
         if (!res.ok) {
           throw new Error("Could not load suppliers.");
         }
+
         const data = await res.json();
         setSuppliers(data);
       } catch (err: unknown) {
@@ -42,14 +79,45 @@ export default function AddInventoryItemPage() {
       }
     }
 
-    loadSuppliers();
-  }, []);
+    async function loadItem() {
+      try {
+        const res = await fetch(`/api/items/${itemId}`);
+        if (!res.ok) {
+          throw new Error("Item not found.");
+        }
+
+        const data = (await res.json()) as ItemData;
+        setItemName(data.item_name || "");
+        setItemSerialNumber(data.item_serial_number || "");
+        setItemCode(data.item_code || "");
+        setItemType(data.item_type || "");
+        setItemQuantity(Number(data.item_quantity) || 0);
+        setItemPrice(String(data.item_price ?? ""));
+        setItemDescription(data.item_description || "");
+        setSupplierId(String(data.supplier_id || ""));
+        setCurrentItemFileLink(data.item_file_link || "");
+        setCurrentItemPhotoLink(data.item_file_photo_link || "");
+        setItemDeliveryDate(
+          data.item_delivery_date ? new Date(data.item_delivery_date).toISOString().slice(0, 10) : "",
+        );
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Unable to load item details.");
+      } finally {
+        setFetching(false);
+      }
+    }
+
+    void loadSuppliers();
+    if (!Number.isNaN(itemId)) {
+      void loadItem();
+    }
+  }, [itemId]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-    setMessage(null);
     setError(null);
+    setMessage(null);
 
     try {
       const formData = new FormData();
@@ -66,33 +134,32 @@ export default function AddInventoryItemPage() {
       if (itemFile) {
         formData.append("item_file", itemFile);
       }
+
       if (itemPhoto) {
         formData.append("item_photo", itemPhoto);
       }
 
-      const res = await fetch("/api/items", {
-        method: "POST",
+      if (removeItemFile) {
+        formData.append("remove_item_file", "true");
+      }
+
+      if (removeItemPhoto) {
+        formData.append("remove_item_photo", "true");
+      }
+
+      const res = await fetch(`/api/items/${itemId}`, {
+        method: "PUT",
         body: formData,
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.message || "Unable to add item.");
+        setError(data?.message || "Unable to update item.");
         return;
       }
 
-      setMessage("Item created successfully.");
-      setItemName("");
-      setItemSerialNumber("");
-      setItemCode("");
-      setItemType("");
-      setItemQuantity(0);
-      setItemPrice("");
-      setItemDescription("");
-      setItemFile(null);
-      setItemPhoto(null);
-      setItemDeliveryDate("");
-      setSupplierId("");
+      setMessage("Item updated successfully.");
+      router.push("/inventoryDashboard/items");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -100,12 +167,21 @@ export default function AddInventoryItemPage() {
     }
   }
 
+  if (fetching) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-slate-600 shadow-sm">Loading item details...</div>
+      </main>
+    );
+  }
+
+  const photoPreview = itemPhoto ? URL.createObjectURL(itemPhoto) : currentItemPhotoLink;
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 font-mono">
       <div className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-500">Add Inventory Item</p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-900">Create a new item</h1>
-        <p className="mt-2 text-sm text-slate-600">Use this form to add a new inventory item and link it to an existing supplier.</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-500">Edit Inventory Item</p>
+        <h1 className="mt-3 text-3xl font-semibold text-slate-900">Update item details</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -146,26 +222,54 @@ export default function AddInventoryItemPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700">Document File</span>
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-slate-700">Current Document</span>
+            {currentItemFileLink ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                <a href={currentItemFileLink} target="_blank" rel="noreferrer" className="font-medium text-sky-700 underline">
+                  {getFileNameFromUrl(currentItemFileLink)}
+                </a>
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">No document uploaded.</p>
+            )}
             <input
               type="file"
               onChange={(e) => setItemFile(e.target.files?.[0] || null)}
               className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
             />
-            {itemFile && <p className="text-xs text-slate-600 mt-1">Selected: {itemFile.name}</p>}
-          </label>
+            {currentItemFileLink && (
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={removeItemFile} onChange={(e) => setRemoveItemFile(e.target.checked)} />
+                Remove current document
+              </label>
+            )}
+            {itemFile && <p className="text-xs text-slate-600 mt-1">New file selected: {itemFile.name}</p>}
+          </div>
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700">Photo File</span>
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-slate-700">Current Photo</span>
+            {photoPreview ? (
+              <div className="relative h-40 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                <Image src={photoPreview} alt={itemName || "Item preview"} fill className="object-cover" />
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">No photo uploaded.</p>
+            )}
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setItemPhoto(e.target.files?.[0] || null)}
               className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
             />
-            {itemPhoto && <p className="text-xs text-slate-600 mt-1">Selected: {itemPhoto.name}</p>}
-          </label>
+            {currentItemPhotoLink && (
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={removeItemPhoto} onChange={(e) => setRemoveItemPhoto(e.target.checked)} />
+                Remove current photo
+              </label>
+            )}
+            {itemPhoto && <p className="text-xs text-slate-600 mt-1">New photo selected: {itemPhoto.name}</p>}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -209,7 +313,9 @@ export default function AddInventoryItemPage() {
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         <div className="flex items-center justify-end gap-3">
-          <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">{loading ? "Saving..." : "Save Item"}</Button>
+          <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/items")} className="rounded-3xl px-6 py-3">
             Back
           </Button>

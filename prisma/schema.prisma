@@ -33,14 +33,15 @@ model Supplier{
 model Items{
   item_id Int @id @default(autoincrement())
   item_name String
+  item_serial_number String @default("")
   item_code String @default("")
   item_price String
   item_type String
   item_quantity Int @default(0)
   item_description String @default("")
   supplier_id Int
-  item_file_link String
-  item_file_photo_link String
+  item_file_link String @default("https://u1ziwjw0vor3e4ce.public.blob.vercel-storage.com/Signed%20Quotation/Logo%20Image.jpg")
+  item_file_photo_link String @default("https://u1ziwjw0vor3e4ce.public.blob.vercel-storage.com/Signed%20Quotation/Logo%20Image.jpg")
   item_delivery_date DateTime @default(now())
   supplier Supplier @relation(fields: [supplier_id], references: [supplier_id])
 }
