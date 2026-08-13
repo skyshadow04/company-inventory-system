@@ -1,11 +1,13 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supplierValidation";
 
 export default function AddSupplierPage() {
+  const router = useRouter();
   const [supplierName, setSupplierName] = useState("");
   const [supplierContact, setSupplierContact] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export default function AddSupplierPage() {
       const res = await fetch("/api/suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, supplierContact: trimmedContact }),
+        body: JSON.stringify({ supplierName, supplierContact: `+971${trimmedContact}` }),
       });
 
       const data = await res.json();
@@ -43,8 +45,8 @@ export default function AddSupplierPage() {
       setMessage("Supplier added successfully.");
       setSupplierName("");
       setSupplierContact("");
-    } catch (err: any) {
-      setError(err?.message || "Network error");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Network error");
     } finally {
       setLoading(false);
     }
@@ -67,13 +69,28 @@ export default function AddSupplierPage() {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">Contact Number</label>
-            <Input value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} placeholder="+971 55 123 4567" required />
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-700">+971</span>
+              <Input
+                type="tel"
+                value={supplierContact}
+                onChange={(event) => setSupplierContact(event.target.value)}
+                placeholder="55 123 4567"
+                title="Enter UAE phone number without +971 prefix"
+                required
+              />
+            </div>
           </div>
 
           {message && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-          <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">{loading ? "Saving..." : "Save Supplier"}</Button>
+          <div className="flex gap-3">
+            <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">{loading ? "Saving..." : "Save Supplier"}</Button>
+            <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/suppliers")} className="rounded-3xl px-6 py-3">
+              Back
+            </Button>
+          </div>
         </form>
       </div>
     </main>

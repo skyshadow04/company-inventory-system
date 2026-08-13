@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -9,10 +11,14 @@ export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<{ id: number; name: string } | null>(null);
   const [authPending, setAuthPending] = useState(false);
+  const [currentHash, setCurrentHash] = useState(() =>
+    typeof window !== "undefined" ? window.location.hash : "",
+  );
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/login";
   const isDashboardPage = pathname?.startsWith("/inventoryDashboard");
+  const isHomePage = pathname === "/";
   async function handleLogout() {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -34,21 +40,32 @@ export default function Navbar() {
   function handleNavClick(e: React.MouseEvent, id: string) {
     e.preventDefault();
 
-    // If already on homepage, scroll to element
+    const targetHash = `#${id}`;
+
+    // Always open the homepage for section links, even if the user is logged in on the dashboard.
     if (pathname === "/" || pathname === "") {
       const el = document.getElementById(id);
+      window.location.hash = targetHash;
+
       if (el) {
         el.scrollIntoView({ behavior: "smooth" });
-        return;
       }
-      // fallback: update hash
-      window.location.hash = `#${id}`;
       return;
     }
 
-    // Otherwise navigate to homepage with hash
     router.push(`/#${id}`);
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener("hashchange", handleHashChange);
+
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -76,7 +93,7 @@ export default function Navbar() {
           window.sessionStorage.removeItem("authPending");
           setAuthPending(false);
         }
-      } catch (err) {
+      } catch {
         if (!mounted) return;
         setIsAuthenticated(false);
         if (typeof window !== "undefined") {
@@ -121,9 +138,11 @@ export default function Navbar() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden shadow-sm sm:h-11 sm:w-11">
-            <img
+            <Image
               src="/images/icon.ico"
               alt="Company icon"
+              width={44}
+              height={44}
               className="h-full w-full object-cover"
             />
           </div>
@@ -134,41 +153,70 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
-          <a href="/#home" onClick={(e) => handleNavClick(e, "home")} className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+          <Link
+            href="/#home"
+            onClick={(e) => handleNavClick(e, "home")}
+            className={`rounded-md p-2 font-mono text-sm font-medium transition ${
+              isHomePage
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             Home
-          </a>
-          <a href="/#about" onClick={(e) => handleNavClick(e, "about")} className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+          </Link>
+          <Link
+            href="/#about"
+            onClick={(e) => handleNavClick(e, "about")}
+            className={`rounded-md p-2 font-mono text-sm font-medium transition ${
+              isHomePage && currentHash === "#about"
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             About
-          </a>
-          <a href="/#services" onClick={(e) => handleNavClick(e, "services")} className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+          </Link>
+          <Link
+            href="/#services"
+            onClick={(e) => handleNavClick(e, "services")}
+            className={`rounded-md p-2 font-mono text-sm font-medium transition ${
+              isHomePage && currentHash === "#services"
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             Services
-          </a>
-          {/* <a href="#information" className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
-            Information
-            </a> */}
-          <a href="/#contact" onClick={(e) => handleNavClick(e, "contact")} className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+          </Link>
+          <Link
+            href="/#contact"
+            onClick={(e) => handleNavClick(e, "contact")}
+            className={`rounded-md p-2 font-mono text-sm font-medium transition ${
+              isHomePage && currentHash === "#contact"
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             Contact
-          </a>
+          </Link>
           {isAuthenticated ? (
             <>
               {!isDashboardPage && (
-                <a href="/inventoryDashboard" className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+                <Link href="/inventoryDashboard" className="rounded-md p-2 font-mono text-sm font-medium text-sky-700 transition hover:bg-sky-950 hover:text-white">
                   Dashboard
-                </a>
+                </Link>
               )}
               {user && (
-                <a href="/inventoryDashboard/profile" className="text-sm font-medium text-sky-700 font-mono pr-2 hover:underline">
+                <Link href="/inventoryDashboard/profile" className="pr-2 font-mono text-sm font-medium text-sky-700 transition hover:underline">
                   Hi, {user.name}
-                </a>
+                </Link>
               )}
-              <button onClick={handleLogout} className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+              <button onClick={handleLogout} className="rounded-md p-2 font-mono text-sm font-medium text-sky-700 transition hover:bg-sky-950 hover:text-white">
                 Logout
               </button>
             </>
           ) : !isLoginPage ? (
-            <a href="/login" className="text-sm font-medium text-sky-700 hover:text-white hover:bg-sky-950 font-mono p-2 rounded-md">
+            <Link href="/login" className="rounded-md p-2 font-mono text-sm font-medium text-sky-700 transition hover:bg-sky-950 hover:text-white">
               Login
-            </a>
+            </Link>
           ) : null}
         </div>
 
@@ -195,35 +243,67 @@ export default function Navbar() {
 
       {isMenuOpen && (
         <div className="mt-3 flex flex-col gap-2 rounded-lg border border-sky-100 bg-white p-3 shadow-sm md:hidden">
-          <a href="/#home" onClick={(e) => handleNavClick(e, "home")} className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+          <Link
+            href="/#home"
+            onClick={(e) => handleNavClick(e, "home")}
+            className={`rounded-md px-2 py-2 text-sm font-medium font-mono transition ${
+              isHomePage
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             Home
-          </a>
-          <a href="/#about" onClick={(e) => handleNavClick(e, "about")} className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+          </Link>
+          <Link
+            href="/#about"
+            onClick={(e) => handleNavClick(e, "about")}
+            className={`rounded-md px-2 py-2 text-sm font-medium font-mono transition ${
+              isHomePage && currentHash === "#about"
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             About
-          </a>
-          <a href="/#services" onClick={(e) => handleNavClick(e, "services")} className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+          </Link>
+          <Link
+            href="/#services"
+            onClick={(e) => handleNavClick(e, "services")}
+            className={`rounded-md px-2 py-2 text-sm font-medium font-mono transition ${
+              isHomePage && currentHash === "#services"
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             Services
-          </a>
-          <a href="/#contact" onClick={(e) => handleNavClick(e, "contact")} className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+          </Link>
+          <Link
+            href="/#contact"
+            onClick={(e) => handleNavClick(e, "contact")}
+            className={`rounded-md px-2 py-2 text-sm font-medium font-mono transition ${
+              isHomePage && currentHash === "#contact"
+                ? "bg-sky-700 text-white"
+                : "text-sky-700 hover:bg-sky-950 hover:text-white"
+            }`}
+          >
             Contact
-          </a>
+          </Link>
           {/* <a href="#information" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
           </a> */}
           {isAuthenticated ? (
             <>
               {!isDashboardPage && (
-                <a href="/inventoryDashboard" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+                <Link href="/inventoryDashboard" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 transition hover:bg-sky-950 hover:text-white">
                   Dashboard
-                </a>
+                </Link>
               )}
-              <button onClick={handleLogout} className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+              <button onClick={handleLogout} className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 transition hover:bg-sky-950 hover:text-white">
                 Logout
               </button>
             </>
           ) : !isLoginPage ? (
-            <a href="/login" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
+            <Link href="/login" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 transition hover:bg-sky-950 hover:text-white">
               Login
-            </a>
+            </Link>
           ) : null}
           {/* <a href="#" className="rounded-md px-2 py-2 text-sm font-medium font-mono text-sky-700 hover:bg-sky-950 hover:text-white">
             Register

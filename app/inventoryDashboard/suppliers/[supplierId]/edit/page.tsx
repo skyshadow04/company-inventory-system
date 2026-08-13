@@ -27,7 +27,8 @@ export default function EditSupplierPage() {
 
         const supplier = await res.json();
         setSupplierName(supplier.supplier_name || "");
-        setSupplierContact(supplier.supplier_contact_number || "");
+        const contactNumber = supplier.supplier_contact_number || "";
+        setSupplierContact(contactNumber.startsWith("+971") ? contactNumber.slice(4) : contactNumber);
       } catch {
         setError("Unable to load supplier details.");
       } finally {
@@ -65,7 +66,7 @@ export default function EditSupplierPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierName: supplierName.trim(),
-          supplierContact: trimmedContact,
+          supplierContact: `+971${trimmedContact}`,
         }),
       });
 
@@ -77,8 +78,8 @@ export default function EditSupplierPage() {
       }
 
       router.push("/inventoryDashboard/suppliers");
-    } catch (err: any) {
-      setError(err?.message || "Network error");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Network error");
     } finally {
       setLoading(false);
     }
@@ -108,7 +109,17 @@ export default function EditSupplierPage() {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">Contact Number</label>
-            <Input value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} placeholder="+971552345678" required />
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-700">+971</span>
+              <Input
+                type="tel"
+                value={supplierContact}
+                onChange={(event) => setSupplierContact(event.target.value)}
+                placeholder="55 123 4567"
+                title="Enter UAE phone number without +971 prefix"
+                required
+              />
+            </div>
           </div>
 
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}

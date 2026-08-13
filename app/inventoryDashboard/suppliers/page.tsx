@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Supplier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
-import { SupplierList } from "@/components/dashboard/supplier-list";
+import { SupplierDashboard } from "@/components/dashboard/supplier-dashboard";
 
 export default async function SuppliersDashboardPage() {
   const cookieStore = await cookies();
@@ -20,9 +20,18 @@ export default async function SuppliersDashboardPage() {
     redirect("/login");
   }
 
-  const suppliers: Supplier[] = await prisma.supplier.findMany({
+  const activeSuppliers: Supplier[] = await prisma.supplier.findMany({
     where: {
       isActive: true,
+    },
+    orderBy: {
+      supplier_id: "desc",
+    },
+  });
+
+  const inactiveSuppliers: Supplier[] = await prisma.supplier.findMany({
+    where: {
+      isActive: false,
     },
     orderBy: {
       supplier_id: "desc",
@@ -40,7 +49,7 @@ export default async function SuppliersDashboardPage() {
         <Link href="/inventoryDashboard/suppliers/addSupplier" className="inline-flex rounded-full bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600">Add Supplier</Link>
       </div>
 
-      <SupplierList suppliers={suppliers} />
+      <SupplierDashboard activeSuppliers={activeSuppliers} inactiveSuppliers={inactiveSuppliers} />
     </main>
   );
 }
