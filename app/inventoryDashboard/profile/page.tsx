@@ -22,7 +22,7 @@ export default function ProfilePage() {
           return;
         }
         setUser(data.user);
-      } catch (err) {
+      } catch {
         router.push("/login");
       } finally {
         if (mounted) setLoading(false);
@@ -44,7 +44,7 @@ export default function ProfilePage() {
         return;
       }
       toast.error("Logout failed");
-    } catch (err) {
+    } catch {
       toast.error("Logout failed");
     }
   }

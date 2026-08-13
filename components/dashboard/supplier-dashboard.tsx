@@ -165,7 +165,7 @@ export function SupplierDashboard({ activeSuppliers, inactiveSuppliers }: Suppli
             {paginatedSuppliers.map((supplier) => (
               <div
               key={supplier.supplier_id}
-              className={`rounded-3xl border p-6 shadow-sm ${
+              className={`rounded-3xl border p-6 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:border-sky-200 hover:shadow-xl ${
                 showInactive
                   ? "border-slate-200 bg-slate-50"
                   : "border-slate-200 bg-white"

@@ -31,7 +31,7 @@ export default function LoginPage() {
                     router.replace("/inventoryDashboard");
                     return;
                 }
-            } catch (err) {
+            } catch {
                 // ignore errors and allow login form to render
             } finally {
                 if (mounted) setCheckingAuth(false);
@@ -69,8 +69,8 @@ export default function LoginPage() {
             // Mark auth as pending so the navbar waits for the new session cookie.
             window.sessionStorage.setItem("authPending", "true");
             window.location.assign("/inventoryDashboard");
-        } catch (err: any) {
-            setError(err?.message || "Network error");
+        } catch {
+            setError("Network error");
             setLoading(false);
         }
     }

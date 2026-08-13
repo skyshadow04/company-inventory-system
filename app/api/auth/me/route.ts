@@ -10,9 +10,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ authenticated: false });
     }
 
-    const payload: any = verifyToken(token);
+    const payload = verifyToken(token);
 
-    if (!payload?.id) {
+    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
       return NextResponse.json({ authenticated: false });
     }
 

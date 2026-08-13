@@ -53,7 +53,10 @@ export default async function ItemsDashboardPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item: ItemWithSupplier) => (
-            <div key={item.item_id} className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div
+              key={item.item_id}
+              className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:border-sky-200 hover:shadow-xl"
+            >
               {item.item_file_photo_link ? (
                 <div className="relative h-48 w-full bg-slate-100">
                   <Image

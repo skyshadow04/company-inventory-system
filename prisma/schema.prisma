@@ -45,3 +45,13 @@ model Items{
   item_delivery_date DateTime @default(now())
   supplier Supplier @relation(fields: [supplier_id], references: [supplier_id])
 }
+
+model Assets{
+  asset_id Int @id @default(autoincrement())
+  asset_name String
+  asset_serial_number String @default("")
+  asset_owner String
+  asset_status String @default("Used")
+  asset_type String 
+  asset_image_link String @default("https://u1ziwjw0vor3e4ce.public.blob.vercel-storage.com/Signed%20Quotation/Logo%20Image.jpg")
+}

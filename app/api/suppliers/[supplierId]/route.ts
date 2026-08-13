@@ -14,8 +14,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ supplier
     }
 
     return NextResponse.json(supplier);
-  } catch (error: any) {
-    return NextResponse.json({ message: "Failed to load supplier.", error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message: "Failed to load supplier.", error: message }, { status: 500 });
   }
 }
 
@@ -44,8 +45,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ supplier
     });
 
     return NextResponse.json(supplier);
-  } catch (error: any) {
-    return NextResponse.json({ message: "Failed to update supplier.", error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message: "Failed to update supplier.", error: message }, { status: 500 });
   }
 }
 
@@ -60,8 +62,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ suppl
     });
 
     return NextResponse.json({ message: "Supplier deactivated successfully.", supplier });
-  } catch (error: any) {
-    return NextResponse.json({ message: "Failed to deactivate supplier.", error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message: "Failed to deactivate supplier.", error: message }, { status: 500 });
   }
 }
 
@@ -79,7 +82,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ suppli
     });
 
     return NextResponse.json({ message: isActive ? "Supplier activated successfully." : "Supplier deactivated successfully.", supplier });
-  } catch (error: any) {
-    return NextResponse.json({ message: "Failed to update supplier status.", error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message: "Failed to update supplier status.", error: message }, { status: 500 });
   }
 }

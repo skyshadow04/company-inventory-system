@@ -43,7 +43,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(supplier);
-  } catch (error: any) {
-    return NextResponse.json({ message: "Failed to create supplier.", error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message: "Failed to create supplier.", error: message }, { status: 500 });
   }
 }

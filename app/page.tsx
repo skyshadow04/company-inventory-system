@@ -124,7 +124,7 @@ export default function Home() {
             Contact Us
           </h2>
           <p className="mx-auto mb-8 max-w-2xl text-lg sm:text-xl">
-            If you have any questions or would like to learn more about our services, please don't hesitate to reach out. We're here to help and look forward to assisting you.
+            If you have any questions or would like to learn more about our services, please do not hesitate to reach out. We are here to help and look forward to assisting you.
           </p>
           <Link
             href="#"
