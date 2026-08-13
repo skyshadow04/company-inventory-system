@@ -2,9 +2,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import type { Items } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+
+type ItemWithSupplier = Prisma.ItemsGetPayload<{
+  include: {
+    supplier: true;
+  };
+}>;
 
 export default async function ItemsDashboardPage() {
   const cookieStore = await cookies();
@@ -20,7 +26,7 @@ export default async function ItemsDashboardPage() {
     redirect("/login");
   }
 
-  const items: Items[] = await prisma.items.findMany({
+  const items: ItemWithSupplier[] = await prisma.items.findMany({
     include: {
       supplier: true,
     },
@@ -28,7 +34,7 @@ export default async function ItemsDashboardPage() {
       item_id: "desc",
     },
   });
-// aadd a comment
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -46,7 +52,7 @@ export default async function ItemsDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item: Items) => (
+          {items.map((item: ItemWithSupplier) => (
             <div key={item.item_id} className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               {item.item_file_photo_link ? (
                 <div className="relative h-48 w-full bg-slate-100">
@@ -71,6 +77,7 @@ export default async function ItemsDashboardPage() {
                   </div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600">{item.item_type}</span>
                 </div>
+                <p className="text-sm text-slate-600">Supplier: {item.supplier?.supplier_name || "Unknown supplier"}</p>
                 <p className="text-sm text-slate-600">Price: {item.item_price}</p>
                 <p className="text-sm text-slate-600">Quantity: {item.item_quantity}</p>
                 {item.item_description ? <p className="mt-3 text-sm text-slate-600">{item.item_description}</p> : null}
