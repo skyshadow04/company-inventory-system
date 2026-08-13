@@ -42,7 +42,7 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
-              href="/register"
+              href="/"
               className="rounded-md bg-white px-6 py-3 font-semibold text-sky-900 transition hover:bg-sky-100"
             >
               Get Started
