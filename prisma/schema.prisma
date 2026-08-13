@@ -25,6 +25,7 @@ model Supplier{
   supplier_id Int @id @default(autoincrement())
   supplier_name String
   supplier_contact_number String
+  isActive Boolean @default(true)
   created_at DateTime @default(now())
   items Items[]
 }

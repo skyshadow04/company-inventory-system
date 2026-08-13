@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supplierValidation";
 
 export default function AddSupplierPage() {
   const [supplierName, setSupplierName] = useState("");
@@ -17,11 +18,19 @@ export default function AddSupplierPage() {
     setMessage(null);
     setError(null);
 
+    const trimmedContact = supplierContact.trim();
+
+    if (!isValidSupplierContact(trimmedContact)) {
+      setError(SUPPLIER_PHONE_ERROR_MESSAGE);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, supplierContact }),
+        body: JSON.stringify({ supplierName, supplierContact: trimmedContact }),
       });
 
       const data = await res.json();
