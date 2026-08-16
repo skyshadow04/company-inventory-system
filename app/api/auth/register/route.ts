@@ -12,10 +12,10 @@ export async function POST(req: Request) {
         const {
             name,
             email,
-            password,
-            role
+            password
         } = body;
 
+        const safeRole = "staff";
 
         const existingUser = await prisma.user.findUnique({
             where:{
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
                 name,
                 email,
                 password:hashedPassword,
-                role:role || "staff"
+                role: safeRole
             }
 
         });
