@@ -1,6 +1,8 @@
 import { del, put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
@@ -23,6 +25,25 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ite
 
 export async function PUT(req: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+
+    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return NextResponse.json({ message: "Forbidden: Only admins can edit items" }, { status: 403 });
+    }
+
     const { itemId } = await params;
     const itemIdNumber = Number(itemId);
 

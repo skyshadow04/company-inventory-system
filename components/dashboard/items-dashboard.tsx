@@ -14,9 +14,10 @@ export type ItemWithSupplier = Prisma.ItemsGetPayload<{
 
 interface ItemsDashboardProps {
   items: ItemWithSupplier[];
+  isAdmin: boolean;
 }
 
-export function ItemsDashboard({ items }: ItemsDashboardProps) {
+export function ItemsDashboard({ items, isAdmin }: ItemsDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
@@ -325,12 +326,14 @@ export function ItemsDashboard({ items }: ItemsDashboardProps) {
                       </a>
                     )}
 
-                    <Link
-                      href={`/inventoryDashboard/items/${item.item_id}/edit`}
-                      className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-                    >
-                      Edit
-                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href={`/inventoryDashboard/items/${item.item_id}/edit`}
+                        className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                      >
+                        Edit
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

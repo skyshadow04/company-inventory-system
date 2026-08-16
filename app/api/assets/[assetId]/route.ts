@@ -1,6 +1,8 @@
 import { del, put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ assetId: string }> }) {
   try {
@@ -22,6 +24,25 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ass
 
 export async function PUT(req: Request, { params }: { params: Promise<{ assetId: string }> }) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+
+    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return NextResponse.json({ message: "Forbidden: Only admins can edit assets" }, { status: 403 });
+    }
+
     const { assetId } = await params;
     const assetIdNumber = Number(assetId);
 
@@ -97,6 +118,25 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ assetId: string }> }) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+
+    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return NextResponse.json({ message: "Forbidden: Only admins can delete assets" }, { status: 403 });
+    }
+
     const { assetId } = await params;
     const assetIdNumber = Number(assetId);
 

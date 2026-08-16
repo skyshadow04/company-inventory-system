@@ -1,6 +1,8 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 
 export async function GET() {
   const items = await prisma.items.findMany({
@@ -17,6 +19,25 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+
+    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return NextResponse.json({ message: "Forbidden: Only admins can create items" }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const item_name = formData.get("item_name") as string;
     const item_serial_number = formData.get("item_serial_number") as string;

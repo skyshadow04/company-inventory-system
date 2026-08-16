@@ -1,6 +1,8 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 
 export async function GET() {
   const assets = await prisma.assets.findMany({
@@ -14,6 +16,25 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+
+    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return NextResponse.json({ message: "Forbidden: Only admins can create assets" }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const asset_name = String(formData.get("asset_name") ?? "").trim();
     const asset_serial_number = String(formData.get("asset_serial_number") ?? "").trim();

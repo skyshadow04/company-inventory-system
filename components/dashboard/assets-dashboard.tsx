@@ -17,9 +17,10 @@ export type AssetRecord = {
 
 interface AssetDashboardProps {
   assets: AssetRecord[];
+  isAdmin: boolean;
 }
 
-export function AssetDashboard({ assets }: AssetDashboardProps) {
+export function AssetDashboard({ assets, isAdmin }: AssetDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOwner, setSelectedOwner] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -231,12 +232,14 @@ export function AssetDashboard({ assets }: AssetDashboardProps) {
                   ) : null}
 
                   <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <Link
-                      href={`/inventoryDashboard/assets/${asset.asset_id}/edit`}
-                      className="inline-flex rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-                    >
-                      Edit
-                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href={`/inventoryDashboard/assets/${asset.asset_id}/edit`}
+                        className="inline-flex rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                      >
+                        Edit
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

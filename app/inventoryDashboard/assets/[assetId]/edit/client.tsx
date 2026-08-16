@@ -1,58 +1,73 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function AddAssetPage() {
+interface AssetData {
+  asset_id: number;
+  asset_name: string;
+  asset_serial_number: string;
+  asset_owner: string;
+  asset_status: string;
+  asset_type: string;
+  asset_image_link: string;
+}
+
+interface EditAssetClientProps {
+  assetId: string;
+}
+
+export default function EditAssetClient({ assetId }: EditAssetClientProps) {
   const router = useRouter();
+  const assetIdNumber = Number(assetId);
+
   const [assetName, setAssetName] = useState("");
   const [assetSerialNumber, setAssetSerialNumber] = useState("");
   const [assetOwner, setAssetOwner] = useState("");
   const [assetStatus, setAssetStatus] = useState("Used");
   const [assetType, setAssetType] = useState("");
   const [assetImage, setAssetImage] = useState<File | null>(null);
+  const [currentAssetImage, setCurrentAssetImage] = useState("");
+  const [removeAssetImage, setRemoveAssetImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function checkAccess() {
+    async function loadAsset() {
       try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        const data = await res.json();
-
-        if (!mounted) {
-          return;
+        const res = await fetch(`/api/assets/${assetIdNumber}`);
+        if (!res.ok) {
+          throw new Error("Asset not found.");
         }
 
-        if (!data?.user || data.user.role !== "admin") {
-          router.replace("/inventoryDashboard/assets");
-        }
-      } catch {
-        if (mounted) {
-          router.replace("/inventoryDashboard/assets");
-        }
+        const data = (await res.json()) as AssetData;
+        setAssetName(data.asset_name || "");
+        setAssetSerialNumber(data.asset_serial_number || "");
+        setAssetOwner(data.asset_owner || "");
+        setAssetStatus(data.asset_status || "Used");
+        setAssetType(data.asset_type || "");
+        setCurrentAssetImage(data.asset_image_link || "");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Unable to load asset details.");
+      } finally {
+        setFetching(false);
       }
     }
 
-    checkAccess();
-
-    return () => {
-      mounted = false;
-    };
-  }, [router]);
+    if (!Number.isNaN(assetIdNumber)) {
+      void loadAsset();
+    }
+  }, [assetIdNumber]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    setMessage(null);
 
     try {
       const formData = new FormData();
@@ -66,25 +81,22 @@ export default function AddAssetPage() {
         formData.append("asset_image", assetImage);
       }
 
-      const res = await fetch("/api/assets", {
-        method: "POST",
+      if (removeAssetImage) {
+        formData.append("remove_asset_image", "true");
+      }
+
+      const res = await fetch(`/api/assets/${assetIdNumber}`, {
+        method: "PUT",
         body: formData,
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.message || "Unable to add asset.");
+        setError(data?.message || "Unable to update asset.");
         return;
       }
 
-      setMessage("Asset created successfully.");
-      setAssetName("");
-      setAssetSerialNumber("");
-      setAssetOwner("");
-      setAssetStatus("Used");
-      setAssetType("");
-      setAssetImage(null);
-      setImagePreview(null);
+      router.push("/inventoryDashboard/assets");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -92,11 +104,19 @@ export default function AddAssetPage() {
     }
   }
 
+  if (fetching) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-slate-600 shadow-sm">Loading asset details...</div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 font-mono">
       <div className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-500">Add Asset</p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-900">Create a new asset</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-500">Edit Asset</p>
+        <h1 className="mt-3 text-3xl font-semibold text-slate-900">Update asset details</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -141,6 +161,18 @@ export default function AddAssetPage() {
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Asset Image</span>
+            {currentAssetImage && !removeAssetImage && !imagePreview ? (
+              <div className="relative h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                <Image src={currentAssetImage} alt={assetName || "Asset preview"} fill className="object-cover" />
+              </div>
+            ) : imagePreview ? (
+              <div className="relative h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                <Image src={imagePreview} alt="Asset preview" fill className="object-cover" />
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">No image uploaded.</p>
+            )}
+
             <input
               type="file"
               accept="image/*"
@@ -148,23 +180,25 @@ export default function AddAssetPage() {
                 const file = e.target.files?.[0] || null;
                 setAssetImage(file);
                 setImagePreview(file ? URL.createObjectURL(file) : null);
+                setRemoveAssetImage(false);
               }}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+              className="mt-2 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
             />
-            {imagePreview && (
-              <div className="relative mt-2 h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                <Image src={imagePreview} alt="Asset preview" fill className="object-cover" />
-              </div>
+
+            {currentAssetImage && (
+              <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={removeAssetImage} onChange={(e) => setRemoveAssetImage(e.target.checked)} />
+                Remove current image
+              </label>
             )}
           </div>
         </div>
 
-        {message && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         <div className="flex items-center justify-end gap-3">
           <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">
-            {loading ? "Saving..." : "Save Asset"}
+            {loading ? "Saving..." : "Save Changes"}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/assets")} className="rounded-3xl px-6 py-3">
             Back

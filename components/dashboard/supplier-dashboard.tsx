@@ -8,9 +8,10 @@ import type { Supplier } from "@prisma/client";
 interface SupplierDashboardProps {
   activeSuppliers: Supplier[];
   inactiveSuppliers: Supplier[];
+  isAdmin: boolean;
 }
 
-export function SupplierDashboard({ activeSuppliers, inactiveSuppliers }: SupplierDashboardProps) {
+export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, isAdmin }: SupplierDashboardProps) {
   const router = useRouter();
   const [showInactive, setShowInactive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -187,7 +188,7 @@ export function SupplierDashboard({ activeSuppliers, inactiveSuppliers }: Suppli
               <p className="mt-3 text-sm text-slate-600">Contact: {supplier.supplier_contact_number}</p>
               <p className="mt-4 text-xs uppercase tracking-[0.24em] text-slate-500">Created {supplier.created_at.toISOString().split("T")[0]}</p>
               <div className="mt-5 flex justify-end gap-2">
-                {!showInactive && (
+                {!showInactive && isAdmin && (
                   <>
                     <Link
                       href={`/inventoryDashboard/suppliers/${supplier.supplier_id}/edit`}
@@ -210,7 +211,7 @@ export function SupplierDashboard({ activeSuppliers, inactiveSuppliers }: Suppli
                     </button>
                   </>
                 )}
-                {showInactive && (
+                {showInactive && isAdmin && (
                   <button
                     type="button"
                     onClick={() =>

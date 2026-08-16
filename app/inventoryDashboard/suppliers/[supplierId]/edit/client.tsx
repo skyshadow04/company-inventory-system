@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -6,50 +6,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supplierValidation";
 
-export default function AddSupplierPage() {
+interface EditSupplierClientProps {
+  supplierId: string;
+}
+
+export default function EditSupplierClient({ supplierId }: EditSupplierClientProps) {
   const router = useRouter();
+  const supplierIdNumber = Number(supplierId);
+
   const [supplierName, setSupplierName] = useState("");
   const [supplierContact, setSupplierContact] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function checkAccess() {
+    async function loadSupplier() {
       try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        const data = await res.json();
-
-        if (!mounted) {
-          return;
+        const res = await fetch(`/api/suppliers/${supplierIdNumber}`);
+        if (!res.ok) {
+          throw new Error("Supplier not found");
         }
 
-        if (!data?.user || data.user.role !== "admin") {
-          router.replace("/inventoryDashboard/suppliers");
-        }
+        const supplier = await res.json();
+        setSupplierName(supplier.supplier_name || "");
+        const contactNumber = supplier.supplier_contact_number || "";
+        setSupplierContact(contactNumber.startsWith("+971") ? contactNumber.slice(4) : contactNumber);
       } catch {
-        if (mounted) {
-          router.replace("/inventoryDashboard/suppliers");
-        }
+        setError("Unable to load supplier details.");
+      } finally {
+        setFetching(false);
       }
     }
 
-    checkAccess();
-
-    return () => {
-      mounted = false;
-    };
-  }, [router]);
+    if (!Number.isNaN(supplierIdNumber)) {
+      loadSupplier();
+    }
+  }, [supplierIdNumber]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-    setMessage(null);
     setError(null);
 
     const trimmedContact = supplierContact.trim();
+
+    if (!supplierName.trim()) {
+      setError("Supplier name is required.");
+      setLoading(false);
+      return;
+    }
 
     if (!isValidSupplierContact(trimmedContact)) {
       setError(SUPPLIER_PHONE_ERROR_MESSAGE);
@@ -58,22 +64,23 @@ export default function AddSupplierPage() {
     }
 
     try {
-      const res = await fetch("/api/suppliers", {
-        method: "POST",
+      const res = await fetch(`/api/suppliers/${supplierIdNumber}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, supplierContact: `+971${trimmedContact}` }),
+        body: JSON.stringify({
+          supplierName: supplierName.trim(),
+          supplierContact: `+971${trimmedContact}`,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Unable to create supplier.");
+        setError(data?.message || "Unable to update supplier.");
         return;
       }
 
-      setMessage("Supplier added successfully.");
-      setSupplierName("");
-      setSupplierContact("");
+      router.push("/inventoryDashboard/suppliers");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -81,13 +88,20 @@ export default function AddSupplierPage() {
     }
   }
 
+  if (fetching) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-slate-600 shadow-sm">Loading supplier details...</div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-500">Add Supplier</p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-900">Create a new supplier</h1>
-          <p className="mt-2 text-sm text-slate-600">Add supplier contact details so inventory items can be linked to vendors.</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-500">Edit Supplier</p>
+          <h1 className="mt-3 text-3xl font-semibold text-slate-900">Update supplier details</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -111,13 +125,14 @@ export default function AddSupplierPage() {
             </div>
           </div>
 
-          {message && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
           <div className="flex gap-3">
-            <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">{loading ? "Saving..." : "Save Supplier"}</Button>
+            <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">
+              {loading ? "Saving..." : "Save Changes"}
+            </Button>
             <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/suppliers")} className="rounded-3xl px-6 py-3">
-              Back
+              Cancel
             </Button>
           </div>
         </form>
