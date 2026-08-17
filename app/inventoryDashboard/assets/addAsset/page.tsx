@@ -13,6 +13,8 @@ export default function AddAssetPage() {
   const [assetOwner, setAssetOwner] = useState("");
   const [assetStatus, setAssetStatus] = useState("Used");
   const [assetType, setAssetType] = useState("");
+  const [customAssetType, setCustomAssetType] = useState("");
+  const [assetTypeOptions, setAssetTypeOptions] = useState<string[]>([]);
   const [assetImage, setAssetImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,34 @@ export default function AddAssetPage() {
       }
     }
 
-    checkAccess();
+    async function loadAssetTypes() {
+      try {
+        const res = await fetch("/api/assets");
+        if (!res.ok) {
+          return;
+        }
+
+        const data = (await res.json()) as Array<{ asset_type?: string }>;
+        const uniqueTypes = Array.from(
+          new Set(
+            data
+              .map((record) => record.asset_type)
+              .filter((type): type is string => Boolean(type && type.trim())),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        if (mounted) {
+          setAssetTypeOptions(uniqueTypes);
+        }
+      } catch {
+        if (mounted) {
+          setAssetTypeOptions([]);
+        }
+      }
+    }
+
+    void checkAccess();
+    void loadAssetTypes();
 
     return () => {
       mounted = false;
@@ -56,11 +85,12 @@ export default function AddAssetPage() {
 
     try {
       const formData = new FormData();
+      const finalAssetType = assetType === "Other" ? customAssetType.trim() : assetType;
       formData.append("asset_name", assetName);
       formData.append("asset_serial_number", assetSerialNumber);
       formData.append("asset_owner", assetOwner);
       formData.append("asset_status", assetStatus);
-      formData.append("asset_type", assetType);
+      formData.append("asset_type", finalAssetType);
 
       if (assetImage) {
         formData.append("asset_image", assetImage);
@@ -83,6 +113,7 @@ export default function AddAssetPage() {
       setAssetOwner("");
       setAssetStatus("Used");
       setAssetType("");
+      setCustomAssetType("");
       setAssetImage(null);
       setImagePreview(null);
     } catch (err: unknown) {
@@ -118,10 +149,30 @@ export default function AddAssetPage() {
             <Input value={assetOwner} onChange={(e) => setAssetOwner(e.target.value)} placeholder="e.g. HR Department" required />
           </label>
 
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Asset Type</span>
-            <Input value={assetType} onChange={(e) => setAssetType(e.target.value)} placeholder="e.g. Laptop" required />
-          </label>
+            <select
+              value={assetType}
+              onChange={(e) => setAssetType(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select asset type</option>
+              {[...assetTypeOptions, "Other"].map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            {assetType === "Other" && (
+              <Input
+                value={customAssetType}
+                onChange={(e) => setCustomAssetType(e.target.value)}
+                placeholder="Please specify the asset type"
+                required
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

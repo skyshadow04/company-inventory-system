@@ -50,6 +50,8 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
   const [itemSerialNumber, setItemSerialNumber] = useState("");
   const [itemCode, setItemCode] = useState("");
   const [itemType, setItemType] = useState("");
+  const [customItemType, setCustomItemType] = useState("");
+  const [itemTypeOptions, setItemTypeOptions] = useState<string[]>([]);
   const [itemQuantity, setItemQuantity] = useState(0);
   const [itemPrice, setItemPrice] = useState("");
   const [itemDescription, setItemDescription] = useState("");
@@ -68,32 +70,42 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadSuppliers() {
+    async function loadItemData() {
       try {
-        const res = await fetch("/api/suppliers");
-        if (!res.ok) {
+        const [suppliersResponse, itemTypesResponse, itemResponse] = await Promise.all([
+          fetch("/api/suppliers"),
+          fetch("/api/items"),
+          fetch(`/api/items/${itemIdNumber}`),
+        ]);
+
+        if (!suppliersResponse.ok) {
           throw new Error("Could not load suppliers.");
         }
 
-        const data = await res.json();
-        setSuppliers(data);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Unable to fetch suppliers.");
-      }
-    }
-
-    async function loadItem() {
-      try {
-        const res = await fetch(`/api/items/${itemIdNumber}`);
-        if (!res.ok) {
+        if (!itemResponse.ok) {
           throw new Error("Item not found.");
         }
 
-        const data = (await res.json()) as ItemData;
+        const suppliersData = await suppliersResponse.json();
+        const itemTypesData = (await itemTypesResponse.json()) as Array<{ item_type?: string }>;
+        const uniqueTypes = Array.from(
+          new Set(
+            itemTypesData
+              .map((record) => record.item_type)
+              .filter((type): type is string => Boolean(type && type.trim())),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        const data = (await itemResponse.json()) as ItemData;
+        const currentItemType = data.item_type || "";
+
+        setSuppliers(suppliersData);
+        setItemTypeOptions(uniqueTypes);
         setItemName(data.item_name || "");
         setItemSerialNumber(data.item_serial_number || "");
         setItemCode(data.item_code || "");
-        setItemType(data.item_type || "");
+        setItemType(currentItemType && uniqueTypes.includes(currentItemType) ? currentItemType : "Other");
+        setCustomItemType(currentItemType && uniqueTypes.includes(currentItemType) ? "" : currentItemType);
         setItemQuantity(Number(data.item_quantity) || 0);
         setItemPrice(String(data.item_price ?? ""));
         setItemDescription(data.item_description || "");
@@ -110,9 +122,8 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
       }
     }
 
-    void loadSuppliers();
     if (!Number.isNaN(itemIdNumber)) {
-      void loadItem();
+      void loadItemData();
     }
   }, [itemIdNumber]);
 
@@ -124,10 +135,11 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
 
     try {
       const formData = new FormData();
+      const finalItemType = itemType === "Other" ? customItemType.trim() : itemType;
       formData.append("item_name", itemName);
       formData.append("item_serial_number", itemSerialNumber);
       formData.append("item_code", itemCode);
-      formData.append("item_type", itemType);
+      formData.append("item_type", finalItemType);
       formData.append("item_quantity", String(itemQuantity));
       formData.append("item_price", itemPrice);
       formData.append("item_description", itemDescription);
@@ -206,10 +218,30 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
             <Input value={itemCode} onChange={(e) => setItemCode(e.target.value)} placeholder="e.g. CHR-1024" required />
           </label>
 
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Item Type</span>
-            <Input value={itemType} onChange={(e) => setItemType(e.target.value)} placeholder="e.g. Furniture" required />
-          </label>
+            <select
+              value={itemType}
+              onChange={(e) => setItemType(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select item type</option>
+              {[...itemTypeOptions, "Other"].map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            {itemType === "Other" && (
+              <Input
+                value={customItemType}
+                onChange={(e) => setCustomItemType(e.target.value)}
+                placeholder="Please specify the item type"
+                required
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

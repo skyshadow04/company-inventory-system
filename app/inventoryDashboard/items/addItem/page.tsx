@@ -16,6 +16,8 @@ export default function AddInventoryItemPage() {
   const [itemSerialNumber, setItemSerialNumber] = useState("");
   const [itemCode, setItemCode] = useState("");
   const [itemType, setItemType] = useState("");
+  const [customItemType, setCustomItemType] = useState("");
+  const [itemTypeOptions, setItemTypeOptions] = useState<string[]>([]);
   const [itemQuantity, setItemQuantity] = useState(0);
   const [itemPrice, setItemPrice] = useState("");
   const [itemDescription, setItemDescription] = useState("");
@@ -50,10 +52,6 @@ export default function AddInventoryItemPage() {
       }
     }
 
-    checkAccess();
-  }, [router]);
-
-  useEffect(() => {
     async function loadSuppliers() {
       try {
         const res = await fetch("/api/suppliers");
@@ -61,14 +59,50 @@ export default function AddInventoryItemPage() {
           throw new Error("Could not load suppliers.");
         }
         const data = await res.json();
-        setSuppliers(data);
+        if (mounted) {
+          setSuppliers(data);
+        }
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Unable to fetch suppliers.");
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "Unable to fetch suppliers.");
+        }
       }
     }
 
-    loadSuppliers();
-  }, []);
+    async function loadItemTypes() {
+      try {
+        const res = await fetch("/api/items");
+        if (!res.ok) {
+          return;
+        }
+
+        const data = (await res.json()) as Array<{ item_type?: string }>;
+        const uniqueTypes = Array.from(
+          new Set(
+            data
+              .map((record) => record.item_type)
+              .filter((type): type is string => Boolean(type && type.trim())),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        if (mounted) {
+          setItemTypeOptions(uniqueTypes);
+        }
+      } catch {
+        if (mounted) {
+          setItemTypeOptions([]);
+        }
+      }
+    }
+
+    void checkAccess();
+    void loadSuppliers();
+    void loadItemTypes();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,10 +112,11 @@ export default function AddInventoryItemPage() {
 
     try {
       const formData = new FormData();
+      const finalItemType = itemType === "Other" ? customItemType.trim() : itemType;
       formData.append("item_name", itemName);
       formData.append("item_serial_number", itemSerialNumber);
       formData.append("item_code", itemCode);
-      formData.append("item_type", itemType);
+      formData.append("item_type", finalItemType);
       formData.append("item_quantity", String(itemQuantity));
       formData.append("item_price", itemPrice);
       formData.append("item_description", itemDescription);
@@ -111,6 +146,7 @@ export default function AddInventoryItemPage() {
       setItemSerialNumber("");
       setItemCode("");
       setItemType("");
+      setCustomItemType("");
       setItemQuantity(0);
       setItemPrice("");
       setItemDescription("");
@@ -152,10 +188,30 @@ export default function AddInventoryItemPage() {
             <Input value={itemCode} onChange={(e) => setItemCode(e.target.value)} placeholder="e.g. CHR-1024" required />
           </label>
 
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Item Type</span>
-            <Input value={itemType} onChange={(e) => setItemType(e.target.value)} placeholder="e.g. Furniture" required />
-          </label>
+            <select
+              value={itemType}
+              onChange={(e) => setItemType(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select item type</option>
+              {[...itemTypeOptions, "Other"].map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            {itemType === "Other" && (
+              <Input
+                value={customItemType}
+                onChange={(e) => setCustomItemType(e.target.value)}
+                placeholder="Please specify the item type"
+                required
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

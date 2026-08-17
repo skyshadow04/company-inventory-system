@@ -29,6 +29,8 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
   const [assetOwner, setAssetOwner] = useState("");
   const [assetStatus, setAssetStatus] = useState("Used");
   const [assetType, setAssetType] = useState("");
+  const [customAssetType, setCustomAssetType] = useState("");
+  const [assetTypeOptions, setAssetTypeOptions] = useState<string[]>([]);
   const [assetImage, setAssetImage] = useState<File | null>(null);
   const [currentAssetImage, setCurrentAssetImage] = useState("");
   const [removeAssetImage, setRemoveAssetImage] = useState(false);
@@ -38,19 +40,36 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadAsset() {
+    async function loadAssetData() {
       try {
-        const res = await fetch(`/api/assets/${assetIdNumber}`);
-        if (!res.ok) {
+        const [assetTypesResponse, assetResponse] = await Promise.all([
+          fetch("/api/assets"),
+          fetch(`/api/assets/${assetIdNumber}`),
+        ]);
+
+        if (!assetResponse.ok) {
           throw new Error("Asset not found.");
         }
 
-        const data = (await res.json()) as AssetData;
+        const assetTypesData = (await assetTypesResponse.json()) as Array<{ asset_type?: string }>;
+        const uniqueTypes = Array.from(
+          new Set(
+            assetTypesData
+              .map((record) => record.asset_type)
+              .filter((type): type is string => Boolean(type && type.trim())),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        const data = (await assetResponse.json()) as AssetData;
+        const currentAssetType = data.asset_type || "";
+
+        setAssetTypeOptions(uniqueTypes);
         setAssetName(data.asset_name || "");
         setAssetSerialNumber(data.asset_serial_number || "");
         setAssetOwner(data.asset_owner || "");
         setAssetStatus(data.asset_status || "Used");
-        setAssetType(data.asset_type || "");
+        setAssetType(currentAssetType && uniqueTypes.includes(currentAssetType) ? currentAssetType : "Other");
+        setCustomAssetType(currentAssetType && uniqueTypes.includes(currentAssetType) ? "" : currentAssetType);
         setCurrentAssetImage(data.asset_image_link || "");
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unable to load asset details.");
@@ -60,7 +79,7 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
     }
 
     if (!Number.isNaN(assetIdNumber)) {
-      void loadAsset();
+      void loadAssetData();
     }
   }, [assetIdNumber]);
 
@@ -71,11 +90,12 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
 
     try {
       const formData = new FormData();
+      const finalAssetType = assetType === "Other" ? customAssetType.trim() : assetType;
       formData.append("asset_name", assetName);
       formData.append("asset_serial_number", assetSerialNumber);
       formData.append("asset_owner", assetOwner);
       formData.append("asset_status", assetStatus);
-      formData.append("asset_type", assetType);
+      formData.append("asset_type", finalAssetType);
 
       if (assetImage) {
         formData.append("asset_image", assetImage);
@@ -138,10 +158,30 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
             <Input value={assetOwner} onChange={(e) => setAssetOwner(e.target.value)} placeholder="e.g. HR Department" required />
           </label>
 
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Asset Type</span>
-            <Input value={assetType} onChange={(e) => setAssetType(e.target.value)} placeholder="e.g. Laptop" required />
-          </label>
+            <select
+              value={assetType}
+              onChange={(e) => setAssetType(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select asset type</option>
+              {[...assetTypeOptions, "Other"].map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            {assetType === "Other" && (
+              <Input
+                value={customAssetType}
+                onChange={(e) => setCustomAssetType(e.target.value)}
+                placeholder="Please specify the asset type"
+                required
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
