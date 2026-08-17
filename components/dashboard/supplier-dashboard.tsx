@@ -8,10 +8,11 @@ import type { Supplier } from "@prisma/client";
 interface SupplierDashboardProps {
   activeSuppliers: Supplier[];
   inactiveSuppliers: Supplier[];
+  supplierOrderMap: Record<string, number>;
   isAdmin: boolean;
 }
 
-export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, isAdmin }: SupplierDashboardProps) {
+export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, supplierOrderMap, isAdmin }: SupplierDashboardProps) {
   const router = useRouter();
   const [showInactive, setShowInactive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,6 +187,12 @@ export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, isAdmin 
               </div>
               <h2 className="mt-2 text-xl font-semibold text-slate-900">{supplier.supplier_name}</h2>
               <p className="mt-3 text-sm text-slate-600">Contact: {supplier.supplier_contact_number}</p>
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-slate-100 px-3 py-2">
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Orders</span>
+                <span className="text-lg font-bold text-slate-900">
+                  {supplierOrderMap[String(supplier.supplier_id)] ?? 0}
+                </span>
+              </div>
               <p className="mt-4 text-xs uppercase tracking-[0.24em] text-slate-500">Created {supplier.created_at.toISOString().split("T")[0]}</p>
               <div className="mt-5 flex justify-end gap-2">
                 {!showInactive && isAdmin && (

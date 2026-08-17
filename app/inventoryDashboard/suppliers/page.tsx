@@ -29,23 +29,34 @@ export default async function SuppliersDashboardPage() {
     redirect("/login");
   }
 
-  const activeSuppliers: Supplier[] = await prisma.supplier.findMany({
-    where: {
-      isActive: true,
-    },
-    orderBy: {
-      supplier_id: "desc",
-    },
-  });
+  const [activeSuppliers, inactiveSuppliers, supplierOrderCounts] = await Promise.all([
+    prisma.supplier.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        supplier_id: "desc",
+      },
+    }),
+    prisma.supplier.findMany({
+      where: {
+        isActive: false,
+      },
+      orderBy: {
+        supplier_id: "desc",
+      },
+    }),
+    prisma.items.groupBy({
+      by: ["supplier_id"],
+      _count: {
+        item_id: true,
+      },
+    }),
+  ]);
 
-  const inactiveSuppliers: Supplier[] = await prisma.supplier.findMany({
-    where: {
-      isActive: false,
-    },
-    orderBy: {
-      supplier_id: "desc",
-    },
-  });
+  const supplierOrderMap = Object.fromEntries(
+    supplierOrderCounts.map((entry) => [String(entry.supplier_id), entry._count.item_id]),
+  );
 
   const isAdmin = currentUser?.role === "admin";
 
@@ -62,7 +73,12 @@ export default async function SuppliersDashboardPage() {
         )}
       </div>
 
-      <SupplierDashboard activeSuppliers={activeSuppliers} inactiveSuppliers={inactiveSuppliers} isAdmin={isAdmin} />
+      <SupplierDashboard
+        activeSuppliers={activeSuppliers}
+        inactiveSuppliers={inactiveSuppliers}
+        supplierOrderMap={supplierOrderMap}
+        isAdmin={isAdmin}
+      />
     </main>
   );
 }
