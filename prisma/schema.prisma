@@ -20,6 +20,7 @@ model User{
   role String @default("staff")
   isActive Boolean @default(true)
   createdAt DateTime @default(now())
+  image_link String @default("https://u1ziwjw0vor3e4ce.public.blob.vercel-storage.com/Signed%20Quotation/Logo%20Image.jpg")
 }
 
 model Supplier{
