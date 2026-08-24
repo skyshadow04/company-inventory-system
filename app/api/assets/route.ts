@@ -3,9 +3,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  const selectedEntity = new URL(request.url).searchParams.get("entity") || "all";
   const assets = await prisma.assets.findMany({
+    where: selectedEntityFilter(currentUser, selectedEntity),
     orderBy: {
       asset_id: "desc",
     },
@@ -31,7 +40,7 @@ export async function POST(req: Request) {
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can create assets" }, { status: 403 });
     }
 
@@ -67,6 +76,7 @@ export async function POST(req: Request) {
         asset_status: asset_status || "Used",
         asset_type,
         asset_image_link,
+        entity: currentUser.entity,
       },
     });
 

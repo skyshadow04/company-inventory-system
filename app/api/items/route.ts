@@ -3,9 +3,18 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import { selectedEntityFilter, getCurrentUser, hasAdminAccess } from "@/lib/entityAccess";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  const selectedEntity = new URL(request.url).searchParams.get("entity") || "all";
   const items = await prisma.items.findMany({
+    where: selectedEntityFilter(currentUser, selectedEntity),
     include: {
       supplier: true,
     },
@@ -34,7 +43,7 @@ export async function POST(req: Request) {
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can create items" }, { status: 403 });
     }
 
@@ -58,6 +67,17 @@ export async function POST(req: Request) {
     const supplierIdNumber = Number(supplier_id);
     if (Number.isNaN(supplierIdNumber)) {
       return NextResponse.json({ message: "Supplier ID must be a number." }, { status: 400 });
+    }
+
+    const supplier = await prisma.supplier.findFirst({
+      where: {
+        supplier_id: supplierIdNumber,
+        ...selectedEntityFilter(currentUser),
+      },
+    });
+
+    if (!supplier) {
+      return NextResponse.json({ message: "Supplier not found for your entity." }, { status: 400 });
     }
 
     // Upload files to Vercel Blob storage
@@ -102,6 +122,7 @@ export async function POST(req: Request) {
         item_file_link,
         item_file_photo_link,
         item_delivery_date: item_delivery_date ? new Date(item_delivery_date) : new Date(),
+        entity: currentUser.entity,
       },
     });
 

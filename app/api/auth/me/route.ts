@@ -30,8 +30,10 @@ export async function GET(req: NextRequest) {
       user: {
         id: user.id,
         name: user.name,
+        company_number: user.company_number,
         email: user.email,
         role: user.role,
+        entity: user.entity,
         isActive: user.isActive,
         createdAt: user.createdAt,
         image_link: user.image_link,
@@ -64,6 +66,7 @@ export async function PATCH(req: Request) {
 
     const formData = await req.formData();
     const name = String(formData.get("name") ?? "").trim();
+    const company_number = String(formData.get("company_number") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "").trim();
     const profileImage = formData.get("profile_image");
@@ -77,7 +80,20 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ message: "Email is already in use." }, { status: 400 });
     }
 
-    const updateData: { name: string; email: string; password?: string; image_link?: string } = { name, email };
+    if (company_number) {
+      const existingCompanyNumber = await prisma.user.findUnique({ where: { company_number } });
+      if (existingCompanyNumber && existingCompanyNumber.id !== currentUser.id) {
+        return NextResponse.json({ message: "Company contact number is already in use." }, { status: 400 });
+      }
+    }
+
+    const updateData: {
+      name: string;
+      company_number: string | null;
+      email: string;
+      password?: string;
+      image_link?: string;
+    } = { name, company_number: company_number || null, email };
 
     if (password) {
       if (password.length < 8) {
@@ -108,8 +124,10 @@ export async function PATCH(req: Request) {
       user: {
         id: user.id,
         name: user.name,
+        company_number: user.company_number,
         email: user.email,
         role: user.role,
+        entity: user.entity,
         isActive: user.isActive,
         createdAt: user.createdAt,
         image_link: user.image_link,

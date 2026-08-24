@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
+import { EntityFilter } from "@/components/entity-filter";
 
 type DashboardPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
@@ -47,39 +48,50 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/login");
   }
 
-  try {
-    verifyToken(token);
-  } catch {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
     redirect("/login");
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const selectedYear = String(resolvedSearchParams.year ?? "all");
   const selectedMonth = String(resolvedSearchParams.month ?? "all");
+  const selectedEntity = String(resolvedSearchParams.entity ?? "all");
+  const superAdmin = isSuperAdmin(currentUser);
+  const entityOptions = superAdmin
+    ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
+    : [];
+  const recordFilter = selectedEntityFilter(currentUser, selectedEntity);
 
   const [assets, suppliers, items, assetTypeBreakdown, itemTypeBreakdown] = await Promise.all([
     prisma.assets.findMany({
+      where: recordFilter,
       orderBy: {
         asset_id: "desc",
       },
     }),
     prisma.supplier.findMany({
+      where: recordFilter,
       orderBy: {
         supplier_name: "asc",
       },
     }),
     prisma.items.findMany({
+      where: recordFilter,
       orderBy: {
         item_delivery_date: "desc",
       },
     }),
     prisma.assets.groupBy({
+      where: recordFilter,
       by: ["asset_type"],
       _count: {
         asset_id: true,
       },
     }),
     prisma.items.groupBy({
+      where: recordFilter,
       by: ["item_type"],
       _count: {
         item_id: true,
@@ -116,6 +128,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </p>
           <h1 className="mt-2 text-3xl font-bold text-slate-900">Dashboard</h1>
         </div>
+        {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity} />}
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+import { hasAdminAccess } from "@/lib/entityAccess";
 import EditItemClient from "./client";
 
 export default async function EditInventoryItemPage({
@@ -28,7 +29,7 @@ export default async function EditInventoryItemPage({
       select: { role: true },
     });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       redirect("/inventoryDashboard/items");
     }
   } catch {

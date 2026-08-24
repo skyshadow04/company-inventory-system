@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
+import { EntityFilter } from "@/components/entity-filter";
 import { AdminDashboard, type AdminUser } from "@/components/dashboard/admin-dashboard";
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
@@ -12,32 +13,29 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  try {
-    const payload = verifyToken(token);
+  const currentUser = await getCurrentUser();
 
-    if (typeof payload !== "object" || payload === null || typeof payload.id !== "number") {
-      redirect("/login");
-    }
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: { id: true, role: true },
-    });
-
-    if (!currentUser || currentUser.role !== "admin") {
-      redirect("/inventoryDashboard");
-    }
-  } catch {
-    redirect("/login");
+  if (!currentUser || !hasAdminAccess(currentUser)) {
+    redirect("/inventoryDashboard");
   }
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const selectedEntity = String(resolvedSearchParams.entity ?? "all");
+  const superAdmin = isSuperAdmin(currentUser);
+  const entityOptions = superAdmin
+    ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
+    : [];
 
   const users: AdminUser[] = (await prisma.user.findMany({
     orderBy: { id: "asc" },
+    where: selectedEntityFilter(currentUser, selectedEntity),
     select: {
       id: true,
       name: true,
+      company_number: true,
       email: true,
       role: true,
+      entity: true,
       isActive: true,
       createdAt: true,
     },
@@ -56,7 +54,13 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <AdminDashboard users={users} />
+      {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity} />}
+
+      <AdminDashboard
+        users={users}
+        currentUserEntity={currentUser.entity}
+        canManageEntities={superAdmin}
+      />
     </main>
   );
 }

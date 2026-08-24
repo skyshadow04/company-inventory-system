@@ -42,7 +42,8 @@ export default function AddInventoryItemPage() {
           return;
         }
 
-        if (!data?.user || data.user.role !== "admin") {
+        const role = String(data?.user?.role || "").trim().toLowerCase().replace(/_/g, " ");
+        if (!data?.user || (role !== "admin" && role !== "super admin")) {
           router.replace("/inventoryDashboard/items");
         }
       } catch {

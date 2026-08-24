@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 type UserProfile = {
   id: number;
   name: string;
+  company_number: string | null;
   email: string;
   role: string;
   isActive: boolean;
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [name, setName] = useState("");
+  const [companyNumber, setCompanyNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -44,6 +46,7 @@ export default function ProfilePage() {
         }
         setUser(data.user);
         setName(data.user.name);
+        setCompanyNumber(data.user.company_number || "");
         setEmail(data.user.email);
       } catch {
         router.push("/login");
@@ -75,6 +78,7 @@ export default function ProfilePage() {
     try {
       const formData = new FormData();
       formData.append("name", name);
+      formData.append("company_number", companyNumber);
       formData.append("email", email);
       if (password) formData.append("password", password);
       if (selectedImage) formData.append("profile_image", selectedImage);
@@ -88,6 +92,7 @@ export default function ProfilePage() {
 
       setUser(data.user);
       setName(data.user.name);
+      setCompanyNumber(data.user.company_number || "");
       setEmail(data.user.email);
       setPassword("");
       setSelectedImage(null);
@@ -147,6 +152,7 @@ export default function ProfilePage() {
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 <label className="space-y-2"><span className="flex items-center gap-2 text-sm font-medium text-slate-700"><UserRound className="size-4 text-sky-600" /> Full name</span><Input value={name} onChange={(event) => setName(event.target.value)} required /></label>
                 <label className="space-y-2"><span className="flex items-center gap-2 text-sm font-medium text-slate-700"><Mail className="size-4 text-sky-600" /> Email address</span><Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+                <label className="space-y-2"><span className="text-sm font-medium text-slate-700">Company contact number (optional)</span><Input type="tel" value={companyNumber} onChange={(event) => setCompanyNumber(event.target.value)} placeholder="e.g. +1 555 123 4567" /></label>
               </div>
               <div className="mt-8 border-t border-slate-100 pt-6"><div className="flex items-center gap-2"><KeyRound className="size-4 text-sky-600" /><h2 className="text-base font-semibold text-slate-950">Change password</h2></div><p className="mt-1 text-sm text-slate-500">Leave blank to keep your current password.</p><Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" minLength={password ? 8 : undefined} className="mt-4 max-w-md" /></div>
               <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end"><Button type="button" variant="outline" onClick={handleLogout}>Log out</Button><Button type="submit" disabled={saving} className="gap-2 bg-sky-600 text-white hover:bg-sky-700"><Check className="size-4" />{saving ? "Saving..." : "Save changes"}</Button></div>

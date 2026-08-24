@@ -2,10 +2,11 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
+import { EntityFilter } from "@/components/entity-filter";
 import { AssetDashboard, type AssetRecord } from "@/components/dashboard/assets-dashboard";
 
-export default async function AssetsPage() {
+export default async function AssetsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
@@ -13,28 +14,27 @@ export default async function AssetsPage() {
     redirect("/login");
   }
 
-  let currentUser: { role: string } | null = null;
+  const currentUser = await getCurrentUser();
 
-  try {
-    const payload = verifyToken(token);
-
-    if (typeof payload === "object" && payload !== null && typeof payload.id === "number") {
-      currentUser = await prisma.user.findUnique({
-        where: { id: payload.id },
-        select: { role: true },
-      });
-    }
-  } catch {
+  if (!currentUser) {
     redirect("/login");
   }
 
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const selectedEntity = String(resolvedSearchParams.entity ?? "all");
+  const superAdmin = isSuperAdmin(currentUser);
+  const entityOptions = superAdmin
+    ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
+    : [];
+
   const assets: AssetRecord[] = await prisma.assets.findMany({
+    where: selectedEntityFilter(currentUser, selectedEntity),
     orderBy: {
       asset_id: "desc",
     },
   });
 
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = hasAdminAccess(currentUser);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -50,6 +50,8 @@ export default async function AssetsPage() {
           </Link>
         )}
       </div>
+
+      {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity} />}
 
       <AssetDashboard assets={assets} isAdmin={isAdmin} />
     </main>

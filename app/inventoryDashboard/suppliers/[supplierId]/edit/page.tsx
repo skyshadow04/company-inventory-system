@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+import { hasAdminAccess } from "@/lib/entityAccess";
 import EditSupplierClient from "./client";
 
 export default async function EditSupplierPage({
@@ -28,7 +29,7 @@ export default async function EditSupplierPage({
       select: { role: true },
     });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       redirect("/inventoryDashboard/suppliers");
     }
   } catch {

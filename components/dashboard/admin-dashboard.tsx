@@ -6,25 +6,35 @@ import { useRouter } from "next/navigation";
 export type AdminUser = {
   id: number;
   name: string;
+  company_number: string | null;
   email: string;
   role: string;
+  entity: string;
   isActive: boolean;
   createdAt: string;
 };
 
 interface AdminDashboardProps {
   users: AdminUser[];
+  currentUserEntity: string;
+  canManageEntities: boolean;
 }
 
-export function AdminDashboard({ users }: AdminDashboardProps) {
+const OTHER_ENTITY = "__other__";
+
+export function AdminDashboard({ users, currentUserEntity, canManageEntities }: AdminDashboardProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [customEntity, setCustomEntity] = useState("");
   const [form, setForm] = useState({
     name: "",
+    company_number: "",
     email: "",
     role: "staff",
+    entity: currentUserEntity,
     password: "",
     confirmPassword: "",
     isActive: true,
@@ -35,6 +45,10 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
 
   const roleOptions = useMemo(() => {
     return Array.from(new Set(users.map((user) => user.role))).sort((a, b) => a.localeCompare(b));
+  }, [users]);
+
+  const entityOptions = useMemo(() => {
+    return Array.from(new Set(users.map((user) => user.entity))).sort((a, b) => a.localeCompare(b));
   }, [users]);
 
   const filteredUsers = useMemo(() => {
@@ -50,11 +64,16 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
   }, [searchQuery, selectedRole, users]);
 
   const openEditModal = (user: AdminUser) => {
+    setIsCreatingUser(false);
     setEditingUser(user);
+    const existingEntity = entityOptions.includes(user.entity) ? user.entity : OTHER_ENTITY;
+    setCustomEntity(existingEntity === OTHER_ENTITY ? user.entity : "");
     setForm({
       name: user.name,
+      company_number: user.company_number || "",
       email: user.email,
       role: user.role,
+      entity: existingEntity,
       password: "",
       confirmPassword: "",
       isActive: user.isActive,
@@ -63,14 +82,36 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
     setSuccess(null);
   };
 
-  const closeModal = () => {
+  const openCreateModal = () => {
     setEditingUser(null);
+    setIsCreatingUser(true);
+    setCustomEntity("");
     setError(null);
     setSuccess(null);
     setForm({
       name: "",
+      company_number: "",
       email: "",
       role: "staff",
+      entity: canManageEntities ? entityOptions[0] || currentUserEntity : currentUserEntity,
+      password: "",
+      confirmPassword: "",
+      isActive: true,
+    });
+  };
+
+  const closeModal = () => {
+    setEditingUser(null);
+    setIsCreatingUser(false);
+    setCustomEntity("");
+    setError(null);
+    setSuccess(null);
+    setForm({
+      name: "",
+      company_number: "",
+      email: "",
+      role: "staff",
+      entity: canManageEntities ? entityOptions[0] || currentUserEntity : currentUserEntity,
       password: "",
       confirmPassword: "",
       isActive: true,
@@ -78,7 +119,7 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
   };
 
   const handleSave = async () => {
-    if (!editingUser) {
+    if (!editingUser && !isCreatingUser) {
       return;
     }
 
@@ -87,16 +128,36 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
     setSuccess(null);
 
     try {
-      if (form.password.trim() && form.password !== form.confirmPassword) {
+      if (isCreatingUser && !form.password.trim()) {
+        setError("Password is required.");
+        setSaving(false);
+        return;
+      }
+
+      if (form.password.trim() !== form.confirmPassword) {
         setError("Passwords do not match.");
+        setSaving(false);
+        return;
+      }
+
+      const resolvedEntity = canManageEntities
+        ? form.entity === OTHER_ENTITY
+          ? customEntity.trim()
+          : form.entity.trim()
+        : currentUserEntity;
+
+      if (!resolvedEntity) {
+        setError("Please specify an entity.");
         setSaving(false);
         return;
       }
 
       const payload: Record<string, string | boolean> = {
         name: form.name.trim(),
+        company_number: form.company_number.trim(),
         email: form.email.trim(),
         role: form.role,
+        entity: resolvedEntity,
         isActive: form.isActive,
       };
 
@@ -104,11 +165,18 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
         payload.password = form.password.trim();
       }
 
-      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
-        method: "PATCH",
+      if (isCreatingUser) {
+        payload.confirmPassword = form.confirmPassword.trim();
+      }
+
+      const res = await fetch(
+        isCreatingUser ? "/api/admin/users" : `/api/admin/users/${editingUser?.id}`,
+        {
+        method: isCreatingUser ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
+        },
+      );
 
       const data = await res.json();
 
@@ -116,11 +184,11 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
         throw new Error(data?.message || "Unable to update user.");
       }
 
-      setSuccess("User updated successfully.");
+      setSuccess(isCreatingUser ? "User created successfully." : "User updated successfully.");
       router.refresh();
       closeModal();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Update failed.");
+      setError(err instanceof Error ? err.message : isCreatingUser ? "Creation failed." : "Update failed.");
     } finally {
       setSaving(false);
     }
@@ -169,6 +237,14 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
             ))}
           </select>
         </label>
+
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center rounded-full bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-sky-500"
+        >
+          Add user
+        </button>
       </div>
 
       {filteredUsers.length === 0 ? (
@@ -196,7 +272,8 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
                 <p>Email: {user.email}</p>
-                <p>Created: {new Date(user.createdAt).toLocaleDateString()}</p>
+                <p>Entity: {user.entity}</p>
+                <p>Created: {new Date(user.createdAt).toLocaleDateString("en-US")}</p>
                 <p>
                   Status:{" "}
                   <span
@@ -225,20 +302,24 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
         </div>
       )}
 
-      {editingUser && (
+      {(editingUser || isCreatingUser) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Manage user</p>
-                <h3 className="mt-2 text-2xl font-semibold text-slate-900">Edit user details</h3>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  {isCreatingUser ? "New user" : "Manage user"}
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-slate-900">
+                  {isCreatingUser ? "Add user" : "Edit user details"}
+                </h3>
               </div>
 
               <button
                 type="button"
                 onClick={closeModal}
                 className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Close edit modal"
+                aria-label="Close user modal"
               >
                 ×
               </button>
@@ -267,11 +348,57 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
               </label>
 
               <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Entity</span>
+                {canManageEntities ? (
+                  <select
+                    value={form.entity}
+                    onChange={(event) => setForm((current) => ({ ...current, entity: event.target.value }))}
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                  >
+                    {entityOptions.map((entity) => (
+                      <option key={entity} value={entity}>
+                        {entity}
+                      </option>
+                    ))}
+                    <option value={OTHER_ENTITY}>Other</option>
+                  </select>
+                ) : (
+                  <input
+                    readOnly
+                    value={currentUserEntity}
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                  />
+                )}
+                {canManageEntities && form.entity === OTHER_ENTITY && (
+                  <input
+                    value={customEntity}
+                    onChange={(event) => setCustomEntity(event.target.value)}
+                    placeholder="Please specify the entity"
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                  />
+                )}
+              </label>
+
+              <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Email</span>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                />
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Company contact number (optional)</span>
+                <input
+                  type="tel"
+                  value={form.company_number}
+                  onChange={(event) => setForm((current) => ({ ...current, company_number: event.target.value }))}
+                  placeholder="e.g. +1 555 123 4567"
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                 />
               </label>
@@ -289,12 +416,14 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
               </label>
 
               <label className="block space-y-2">
-                <span className="text-sm font-medium text-slate-700">New password (optional)</span>
+                <span className="text-sm font-medium text-slate-700">
+                  {isCreatingUser ? "Password" : "New password (optional)"}
+                </span>
                 <input
                   type="password"
                   value={form.password}
                   onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Leave blank to keep the current password"
+                  placeholder={isCreatingUser ? "Enter a password" : "Leave blank to keep the current password"}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                 />
               </label>
@@ -305,7 +434,7 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
                   type="password"
                   value={form.confirmPassword}
                   onChange={(event) => setForm((current) => ({ ...current, confirmPassword: event.target.value }))}
-                  placeholder="Re-enter the new password"
+                  placeholder={isCreatingUser ? "Re-enter the password" : "Re-enter the new password"}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                 />
               </label>
@@ -340,7 +469,7 @@ export function AdminDashboard({ users }: AdminDashboardProps) {
                 disabled={saving}
                 className="rounded-full bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {saving ? "Saving..." : "Save changes"}
+                {saving ? "Saving..." : isCreatingUser ? "Create user" : "Save changes"}
               </button>
             </div>
           </div>

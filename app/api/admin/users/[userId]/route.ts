@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import { hasAdminAccess, isSuperAdmin } from "@/lib/entityAccess";
 
 export async function PATCH(
   req: Request,
@@ -24,7 +25,7 @@ export async function PATCH(
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
@@ -36,9 +37,9 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, email, role, password, isActive } = body || {};
+    const { name, company_number, email, role, password, isActive, entity } = body || {};
 
-    if (!name || !email || !role) {
+    if (!name || !email || !role || typeof entity !== "string" || !entity.trim()) {
       return NextResponse.json({ message: "Name, email and role are required" }, { status: 400 });
     }
 
@@ -52,16 +53,38 @@ export async function PATCH(
       return NextResponse.json({ message: "Email is already in use" }, { status: 400 });
     }
 
+    const companyNumber = typeof company_number === "string" ? company_number.trim() : "";
+    if (companyNumber) {
+      const existingCompanyNumber = await prisma.user.findUnique({ where: { company_number: companyNumber } });
+      if (existingCompanyNumber && existingCompanyNumber.id !== userIdNumber) {
+        return NextResponse.json({ message: "Company contact number is already in use" }, { status: 400 });
+      }
+    }
+
+    const targetUser = await prisma.user.findFirst({
+      where: { id: userIdNumber, ...(isSuperAdmin(currentUser) ? {} : { entity: currentUser.entity }) },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+
+    const resolvedEntity = isSuperAdmin(currentUser) ? entity.trim() : currentUser.entity;
+
     const updateData: {
       name: string;
+      company_number: string | null;
       email: string;
       role: string;
+      entity: string;
       password?: string;
       isActive?: boolean;
     } = {
       name: String(name).trim(),
+      company_number: companyNumber || null,
       email: String(email).trim(),
       role: String(role).trim(),
+      entity: resolvedEntity,
     };
 
     if (typeof password === "string" && password.trim()) {
@@ -82,8 +105,10 @@ export async function PATCH(
       user: {
         id: user.id,
         name: user.name,
+        company_number: user.company_number,
         email: user.email,
         role: user.role,
+        entity: user.entity,
         isActive: user.isActive,
       },
     });

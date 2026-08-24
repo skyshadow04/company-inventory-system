@@ -28,7 +28,8 @@ export default function Sidebar() {
           return;
         }
 
-        setIsAdmin(data?.user?.role === "admin");
+        const role = String(data?.user?.role || "").trim().toLowerCase().replace(/_/g, " ");
+        setIsAdmin(role === "admin" || role === "super admin");
       } catch {
         if (mounted) {
           setIsAdmin(false);

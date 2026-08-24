@@ -3,12 +3,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import { selectedEntityFilter, getCurrentUser, hasAdminAccess } from "@/lib/entityAccess";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
     const { itemId } = await params;
-    const item = await prisma.items.findUnique({
-      where: { item_id: Number(itemId) },
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const item = await prisma.items.findFirst({
+      where: { item_id: Number(itemId), ...selectedEntityFilter(currentUser) },
       include: { supplier: true },
     });
 
@@ -40,7 +46,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can edit items" }, { status: 403 });
     }
 
@@ -70,8 +76,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
       return NextResponse.json({ message: "Missing required fields." }, { status: 400 });
     }
 
-    const existingItem = await prisma.items.findUnique({
-      where: { item_id: itemIdNumber },
+    const existingItem = await prisma.items.findFirst({
+      where: { item_id: itemIdNumber, ...selectedEntityFilter(currentUser) },
     });
 
     if (!existingItem) {
@@ -81,6 +87,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
     const supplierIdNumber = Number(supplier_id);
     if (Number.isNaN(supplierIdNumber)) {
       return NextResponse.json({ message: "Supplier ID must be a number." }, { status: 400 });
+    }
+
+    const supplier = await prisma.supplier.findFirst({
+      where: { supplier_id: supplierIdNumber, ...selectedEntityFilter(currentUser) },
+    });
+
+    if (!supplier) {
+      return NextResponse.json({ message: "Supplier not found for your entity." }, { status: 400 });
     }
 
     let nextItemFileLink = existingItem.item_file_link || "";

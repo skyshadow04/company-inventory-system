@@ -3,12 +3,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ assetId: string }> }) {
   try {
     const { assetId } = await params;
-    const asset = await prisma.assets.findUnique({
-      where: { asset_id: Number(assetId) },
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const asset = await prisma.assets.findFirst({
+      where: { asset_id: Number(assetId), ...selectedEntityFilter(currentUser) },
     });
 
     if (!asset) {
@@ -39,7 +45,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can edit assets" }, { status: 403 });
     }
 
@@ -63,8 +69,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
       return NextResponse.json({ message: "Asset name, owner, and type are required." }, { status: 400 });
     }
 
-    const existingAsset = await prisma.assets.findUnique({
-      where: { asset_id: assetIdNumber },
+    const existingAsset = await prisma.assets.findFirst({
+      where: { asset_id: assetIdNumber, ...selectedEntityFilter(currentUser) },
     });
 
     if (!existingAsset) {
@@ -133,15 +139,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ asse
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can delete assets" }, { status: 403 });
     }
 
     const { assetId } = await params;
     const assetIdNumber = Number(assetId);
 
-    const asset = await prisma.assets.findUnique({
-      where: { asset_id: assetIdNumber },
+    const asset = await prisma.assets.findFirst({
+      where: { asset_id: assetIdNumber, ...selectedEntityFilter(currentUser) },
     });
 
     if (!asset) {

@@ -3,12 +3,18 @@ import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supp
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
 
 export async function GET(req: Request, { params }: { params: Promise<{ supplierId: string }> }) {
   try {
     const { supplierId } = await params;
-    const supplier = await prisma.supplier.findUnique({
-      where: { supplier_id: Number(supplierId) },
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const supplier = await prisma.supplier.findFirst({
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
     });
 
     if (!supplier) {
@@ -39,7 +45,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ supplier
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can edit suppliers" }, { status: 403 });
     }
 
@@ -55,6 +61,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ supplier
 
     if (!isValidSupplierContact(trimmedContact)) {
       return NextResponse.json({ message: SUPPLIER_PHONE_ERROR_MESSAGE }, { status: 400 });
+    }
+
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+    });
+
+    if (!existingSupplier) {
+      return NextResponse.json({ message: "Supplier not found" }, { status: 404 });
     }
 
     const supplier = await prisma.supplier.update({
@@ -89,11 +103,19 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ suppl
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can delete suppliers" }, { status: 403 });
     }
 
     const { supplierId } = await params;
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+    });
+
+    if (!existingSupplier) {
+      return NextResponse.json({ message: "Supplier not found" }, { status: 404 });
+    }
+
     const supplier = await prisma.supplier.update({
       where: { supplier_id: Number(supplierId) },
       data: {
@@ -125,13 +147,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ suppli
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id } });
 
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!currentUser || !hasAdminAccess(currentUser)) {
       return NextResponse.json({ message: "Forbidden: Only admins can update supplier status" }, { status: 403 });
     }
 
     const { supplierId } = await params;
     const body = await req.json();
     const { isActive } = body;
+
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+    });
+
+    if (!existingSupplier) {
+      return NextResponse.json({ message: "Supplier not found" }, { status: 404 });
+    }
 
     const supplier = await prisma.supplier.update({
       where: { supplier_id: Number(supplierId) },

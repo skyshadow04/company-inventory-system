@@ -27,9 +27,11 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
   const [assetName, setAssetName] = useState("");
   const [assetSerialNumber, setAssetSerialNumber] = useState("");
   const [assetOwner, setAssetOwner] = useState("");
+  const [customAssetOwner, setCustomAssetOwner] = useState("");
   const [assetStatus, setAssetStatus] = useState("Used");
   const [assetType, setAssetType] = useState("");
   const [customAssetType, setCustomAssetType] = useState("");
+  const [assetOwnerOptions, setAssetOwnerOptions] = useState<string[]>([]);
   const [assetTypeOptions, setAssetTypeOptions] = useState<string[]>([]);
   const [assetImage, setAssetImage] = useState<File | null>(null);
   const [currentAssetImage, setCurrentAssetImage] = useState("");
@@ -51,22 +53,35 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
           throw new Error("Asset not found.");
         }
 
-        const assetTypesData = (await assetTypesResponse.json()) as Array<{ asset_type?: string }>;
+        const assetsData = (await assetTypesResponse.json()) as Array<{
+          asset_owner?: string;
+          asset_type?: string;
+        }>;
+        const uniqueOwners = Array.from(
+          new Set(
+            assetsData
+              .map((record) => record.asset_owner)
+              .filter((owner): owner is string => Boolean(owner && owner.trim())),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
         const uniqueTypes = Array.from(
           new Set(
-            assetTypesData
+            assetsData
               .map((record) => record.asset_type)
               .filter((type): type is string => Boolean(type && type.trim())),
           ),
         ).sort((a, b) => a.localeCompare(b));
 
         const data = (await assetResponse.json()) as AssetData;
+        const currentAssetOwner = data.asset_owner || "";
         const currentAssetType = data.asset_type || "";
 
+        setAssetOwnerOptions(uniqueOwners);
         setAssetTypeOptions(uniqueTypes);
         setAssetName(data.asset_name || "");
         setAssetSerialNumber(data.asset_serial_number || "");
-        setAssetOwner(data.asset_owner || "");
+        setAssetOwner(currentAssetOwner && uniqueOwners.includes(currentAssetOwner) ? currentAssetOwner : "Other");
+        setCustomAssetOwner(currentAssetOwner && uniqueOwners.includes(currentAssetOwner) ? "" : currentAssetOwner);
         setAssetStatus(data.asset_status || "Used");
         setAssetType(currentAssetType && uniqueTypes.includes(currentAssetType) ? currentAssetType : "Other");
         setCustomAssetType(currentAssetType && uniqueTypes.includes(currentAssetType) ? "" : currentAssetType);
@@ -90,10 +105,11 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
 
     try {
       const formData = new FormData();
+      const finalAssetOwner = assetOwner === "Other" ? customAssetOwner.trim() : assetOwner;
       const finalAssetType = assetType === "Other" ? customAssetType.trim() : assetType;
       formData.append("asset_name", assetName);
       formData.append("asset_serial_number", assetSerialNumber);
-      formData.append("asset_owner", assetOwner);
+      formData.append("asset_owner", finalAssetOwner);
       formData.append("asset_status", assetStatus);
       formData.append("asset_type", finalAssetType);
 
@@ -153,10 +169,31 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Owner</span>
-            <Input value={assetOwner} onChange={(e) => setAssetOwner(e.target.value)} placeholder="e.g. HR Department" required />
-          </label>
+            <select
+              value={assetOwner}
+              onChange={(e) => setAssetOwner(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select asset owner</option>
+              {assetOwnerOptions.map((owner) => (
+                <option key={owner} value={owner}>
+                  {owner}
+                </option>
+              ))}
+              <option value="Other">Other</option>
+            </select>
+            {assetOwner === "Other" && (
+              <Input
+                value={customAssetOwner}
+                onChange={(e) => setCustomAssetOwner(e.target.value)}
+                placeholder="Please specify the asset owner"
+                required
+              />
+            )}
+          </div>
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Asset Type</span>

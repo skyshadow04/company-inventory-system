@@ -3,10 +3,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Supplier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
+import { EntityFilter } from "@/components/entity-filter";
 import { SupplierDashboard } from "@/components/dashboard/supplier-dashboard";
 
-export default async function SuppliersDashboardPage() {
+export default async function SuppliersDashboardPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
@@ -14,25 +15,25 @@ export default async function SuppliersDashboardPage() {
     redirect("/login");
   }
 
-  let currentUser: { role: string } | null = null;
+  const currentUser = await getCurrentUser();
 
-  try {
-    const payload = verifyToken(token);
-
-    if (typeof payload === "object" && payload !== null && typeof payload.id === "number") {
-      currentUser = await prisma.user.findUnique({
-        where: { id: payload.id },
-        select: { role: true },
-      });
-    }
-  } catch {
+  if (!currentUser) {
     redirect("/login");
   }
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const selectedEntity = String(resolvedSearchParams.entity ?? "all");
+  const superAdmin = isSuperAdmin(currentUser);
+  const entityOptions = superAdmin
+    ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
+    : [];
+  const recordFilter = selectedEntityFilter(currentUser, selectedEntity);
 
   const [activeSuppliers, inactiveSuppliers, supplierOrderCounts] = await Promise.all([
     prisma.supplier.findMany({
       where: {
         isActive: true,
+        ...recordFilter,
       },
       orderBy: {
         supplier_id: "desc",
@@ -41,6 +42,7 @@ export default async function SuppliersDashboardPage() {
     prisma.supplier.findMany({
       where: {
         isActive: false,
+        ...recordFilter,
       },
       orderBy: {
         supplier_id: "desc",
@@ -48,6 +50,7 @@ export default async function SuppliersDashboardPage() {
     }),
     prisma.items.groupBy({
       by: ["supplier_id"],
+      where: recordFilter,
       _count: {
         item_id: true,
       },
@@ -58,7 +61,7 @@ export default async function SuppliersDashboardPage() {
     supplierOrderCounts.map((entry) => [String(entry.supplier_id), entry._count.item_id]),
   );
 
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = hasAdminAccess(currentUser);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -72,6 +75,8 @@ export default async function SuppliersDashboardPage() {
           <Link href="/inventoryDashboard/suppliers/addSupplier" className="inline-flex rounded-full bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600">Add Supplier</Link>
         )}
       </div>
+
+      {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity} />}
 
       <SupplierDashboard
         activeSuppliers={activeSuppliers}
