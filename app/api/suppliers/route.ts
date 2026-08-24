@@ -3,7 +3,7 @@ import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supp
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
-import { selectedEntityFilter, getCurrentUser, hasAdminAccess } from "@/lib/entityAccess";
+import { selectedEntityFilter, getCurrentUser, hasAdminAccess, isSuperAdmin } from "@/lib/entityAccess";
 
 export async function GET(request: Request) {
   const currentUser = await getCurrentUser();
@@ -52,8 +52,10 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { supplierName, supplierContact } = body;
+    const submittedEntity = typeof body?.entity === "string" ? body.entity.trim() : "";
+    const entity = isSuperAdmin(currentUser) ? submittedEntity : currentUser.entity;
 
-    if (!supplierName || !supplierContact) {
+    if (!supplierName || !supplierContact || !entity) {
       return NextResponse.json({ message: "Missing supplier name or contact." }, { status: 400 });
     }
 
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
         supplier_name: supplierName,
         supplier_contact_number: trimmedContact,
         isActive: true,
-        entity: currentUser.entity,
+        entity,
       },
     });
 

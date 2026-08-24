@@ -14,13 +14,16 @@ interface AssetData {
   asset_status: string;
   asset_type: string;
   asset_image_link: string;
+  entity: string;
 }
 
 interface EditAssetClientProps {
   assetId: string;
+  selectedEntity?: string;
+  page?: string;
 }
 
-export default function EditAssetClient({ assetId }: EditAssetClientProps) {
+export default function EditAssetClient({ assetId, selectedEntity, page }: EditAssetClientProps) {
   const router = useRouter();
   const assetIdNumber = Number(assetId);
 
@@ -44,25 +47,24 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
   useEffect(() => {
     async function loadAssetData() {
       try {
-        const [assetTypesResponse, assetResponse] = await Promise.all([
+        const [assetTypesResponse, assetResponse, usersResponse] = await Promise.all([
           fetch("/api/assets"),
           fetch(`/api/assets/${assetIdNumber}`),
+          fetch("/api/admin/users"),
         ]);
 
-        if (!assetResponse.ok) {
+        if (!assetResponse.ok || !usersResponse.ok) {
           throw new Error("Asset not found.");
         }
 
         const assetsData = (await assetTypesResponse.json()) as Array<{
-          asset_owner?: string;
           asset_type?: string;
         }>;
+        const data = (await assetResponse.json()) as AssetData;
+        const usersData = (await usersResponse.json()) as Array<{ name?: string; entity?: string }>;
+        const assetUsers = usersData.filter((user) => user.entity === data.entity);
         const uniqueOwners = Array.from(
-          new Set(
-            assetsData
-              .map((record) => record.asset_owner)
-              .filter((owner): owner is string => Boolean(owner && owner.trim())),
-          ),
+          new Set(assetUsers.map((user) => user.name).filter((name): name is string => Boolean(name?.trim()))),
         ).sort((a, b) => a.localeCompare(b));
         const uniqueTypes = Array.from(
           new Set(
@@ -72,7 +74,6 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
           ),
         ).sort((a, b) => a.localeCompare(b));
 
-        const data = (await assetResponse.json()) as AssetData;
         const currentAssetOwner = data.asset_owner || "";
         const currentAssetType = data.asset_type || "";
 
@@ -132,7 +133,8 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
         return;
       }
 
-      router.push("/inventoryDashboard/assets");
+      const entity = selectedEntity || data?.entity || "";
+      router.push(`/inventoryDashboard/assets?${new URLSearchParams({ entity, page: page || "1" }).toString()}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -277,7 +279,7 @@ export default function EditAssetClient({ assetId }: EditAssetClientProps) {
           <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">
             {loading ? "Saving..." : "Save Changes"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/assets")} className="rounded-3xl px-6 py-3">
+          <Button type="button" variant="secondary" onClick={() => router.push(`/inventoryDashboard/assets?${new URLSearchParams({ ...(selectedEntity ? { entity: selectedEntity } : {}), page: page || "1" }).toString()}`)} className="rounded-3xl px-6 py-3">
             Back
           </Button>
         </div>

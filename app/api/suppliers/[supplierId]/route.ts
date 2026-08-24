@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ supplier
     }
 
     const supplier = await prisma.supplier.findFirst({
-      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!supplier) {
@@ -64,7 +64,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ supplier
     }
 
     const existingSupplier = await prisma.supplier.findFirst({
-      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!existingSupplier) {
@@ -109,7 +109,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ suppl
 
     const { supplierId } = await params;
     const existingSupplier = await prisma.supplier.findFirst({
-      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!existingSupplier) {
@@ -156,7 +156,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ suppli
     const { isActive } = body;
 
     const existingSupplier = await prisma.supplier.findFirst({
-      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser) },
+      where: { supplier_id: Number(supplierId), ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!existingSupplier) {

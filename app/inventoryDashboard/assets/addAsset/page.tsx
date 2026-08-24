@@ -48,17 +48,25 @@ export default function AddAssetPage() {
 
     async function loadAssetTypes() {
       try {
-        const res = await fetch("/api/assets");
-        if (!res.ok) {
+        const [assetsResponse, usersResponse] = await Promise.all([
+          fetch("/api/assets"),
+          fetch("/api/admin/users"),
+        ]);
+        if (!assetsResponse.ok || !usersResponse.ok) {
           return;
         }
 
-        const data = (await res.json()) as Array<{ asset_owner?: string; asset_type?: string }>;
+        const data = (await assetsResponse.json()) as Array<{ asset_type?: string }>;
+        const users = (await usersResponse.json()) as Array<{ name?: string; entity?: string }>;
+        const authResponse = await fetch("/api/auth/me", { credentials: "include" });
+        const authData = await authResponse.json();
+        const currentEntity = String(authData?.user?.entity || "");
         const uniqueOwners = Array.from(
           new Set(
-            data
-              .map((record) => record.asset_owner)
-              .filter((owner): owner is string => Boolean(owner && owner.trim())),
+            users
+              .filter((user) => user.entity === currentEntity)
+              .map((user) => user.name)
+              .filter((name): name is string => Boolean(name?.trim())),
           ),
         ).sort((a, b) => a.localeCompare(b));
         const uniqueTypes = Array.from(
@@ -119,6 +127,7 @@ export default function AddAssetPage() {
         return;
       }
 
+      router.push(`/inventoryDashboard/assets?entity=${encodeURIComponent(String(data?.entity || ""))}`);
       setMessage("Asset created successfully.");
       setAssetName("");
       setAssetSerialNumber("");

@@ -18,13 +18,15 @@ export type AssetRecord = {
 interface AssetDashboardProps {
   assets: AssetRecord[];
   isAdmin: boolean;
+  selectedEntity?: string;
+  initialPage?: number;
 }
 
-export function AssetDashboard({ assets, isAdmin }: AssetDashboardProps) {
+export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 1 }: AssetDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOwner, setSelectedOwner] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const itemsPerPage = 6;
 
   const ownerOptions = useMemo(() => {
@@ -234,7 +236,7 @@ export function AssetDashboard({ assets, isAdmin }: AssetDashboardProps) {
                   <div className="flex flex-wrap items-center gap-2 pt-2">
                     {isAdmin && (
                       <Link
-                        href={`/inventoryDashboard/assets/${asset.asset_id}/edit`}
+                        href={`/inventoryDashboard/assets/${asset.asset_id}/edit?${new URLSearchParams({ ...(selectedEntity ? { entity: selectedEntity } : {}), page: String(safeCurrentPage) }).toString()}`}
                         className="inline-flex rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
                       >
                         Edit

@@ -7,8 +7,10 @@ import EditAssetClient from "./client";
 
 export default async function EditAssetPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ assetId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -37,7 +39,10 @@ export default async function EditAssetPage({
   }
 
   const { assetId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const selectedEntity = String(resolvedSearchParams.entity ?? "");
+  const page = String(resolvedSearchParams.page ?? "1");
 
-  return <EditAssetClient assetId={assetId} />;
+  return <EditAssetClient assetId={assetId} selectedEntity={selectedEntity} page={page} />;
 }
 

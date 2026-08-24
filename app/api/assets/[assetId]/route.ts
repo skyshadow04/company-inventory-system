@@ -14,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ass
     }
 
     const asset = await prisma.assets.findFirst({
-      where: { asset_id: Number(assetId), ...selectedEntityFilter(currentUser) },
+      where: { asset_id: Number(assetId), ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!asset) {
@@ -70,7 +70,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
     }
 
     const existingAsset = await prisma.assets.findFirst({
-      where: { asset_id: assetIdNumber, ...selectedEntityFilter(currentUser) },
+      where: { asset_id: assetIdNumber, ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!existingAsset) {
@@ -147,7 +147,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ asse
     const assetIdNumber = Number(assetId);
 
     const asset = await prisma.assets.findFirst({
-      where: { asset_id: assetIdNumber, ...selectedEntityFilter(currentUser) },
+      where: { asset_id: assetIdNumber, ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!asset) {

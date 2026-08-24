@@ -14,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ite
     }
 
     const item = await prisma.items.findFirst({
-      where: { item_id: Number(itemId), ...selectedEntityFilter(currentUser) },
+      where: { item_id: Number(itemId), ...selectedEntityFilter(currentUser, "all") },
       include: { supplier: true },
     });
 
@@ -77,7 +77,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
     }
 
     const existingItem = await prisma.items.findFirst({
-      where: { item_id: itemIdNumber, ...selectedEntityFilter(currentUser) },
+      where: { item_id: itemIdNumber, ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!existingItem) {
@@ -90,7 +90,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
     }
 
     const supplier = await prisma.supplier.findFirst({
-      where: { supplier_id: supplierIdNumber, ...selectedEntityFilter(currentUser) },
+      where: { supplier_id: supplierIdNumber, ...selectedEntityFilter(currentUser, "all") },
     });
 
     if (!supplier) {

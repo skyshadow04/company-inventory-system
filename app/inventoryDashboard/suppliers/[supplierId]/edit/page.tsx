@@ -7,8 +7,10 @@ import EditSupplierClient from "./client";
 
 export default async function EditSupplierPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ supplierId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -37,7 +39,10 @@ export default async function EditSupplierPage({
   }
 
   const { supplierId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const page = String(resolvedSearchParams.page ?? "1");
+  const entity = String(resolvedSearchParams.entity ?? "");
 
-  return <EditSupplierClient supplierId={supplierId} />;
+  return <EditSupplierClient supplierId={supplierId} page={page} entity={entity} />;
 }
 

@@ -8,9 +8,11 @@ import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supp
 
 interface EditSupplierClientProps {
   supplierId: string;
+  page?: string;
+  entity?: string;
 }
 
-export default function EditSupplierClient({ supplierId }: EditSupplierClientProps) {
+export default function EditSupplierClient({ supplierId, page, entity }: EditSupplierClientProps) {
   const router = useRouter();
   const supplierIdNumber = Number(supplierId);
 
@@ -80,7 +82,7 @@ export default function EditSupplierClient({ supplierId }: EditSupplierClientPro
         return;
       }
 
-      router.push("/inventoryDashboard/suppliers");
+      router.push(`/inventoryDashboard/suppliers?${new URLSearchParams({ ...(entity ? { entity } : {}), page: page || "1" }).toString()}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -131,7 +133,7 @@ export default function EditSupplierClient({ supplierId }: EditSupplierClientPro
             <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">
               {loading ? "Saving..." : "Save Changes"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/suppliers")} className="rounded-3xl px-6 py-3">
+            <Button type="button" variant="secondary" onClick={() => router.push(`/inventoryDashboard/suppliers?${new URLSearchParams({ ...(entity ? { entity } : {}), page: page || "1" }).toString()}`)} className="rounded-3xl px-6 py-3">
               Cancel
             </Button>
           </div>

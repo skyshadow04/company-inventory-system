@@ -23,6 +23,7 @@ export default async function SuppliersDashboardPage({ searchParams }: { searchP
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
+  const initialPage = Math.max(1, Number(resolvedSearchParams.page) || 1);
   const superAdmin = isSuperAdmin(currentUser);
   const entityOptions = superAdmin
     ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
@@ -83,6 +84,8 @@ export default async function SuppliersDashboardPage({ searchParams }: { searchP
         inactiveSuppliers={inactiveSuppliers}
         supplierOrderMap={supplierOrderMap}
         isAdmin={isAdmin}
+        initialPage={initialPage}
+        selectedEntity={selectedEntity}
       />
     </main>
   );

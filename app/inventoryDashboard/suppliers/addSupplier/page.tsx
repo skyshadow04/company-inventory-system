@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { isValidSupplierContact, SUPPLIER_PHONE_ERROR_MESSAGE } from "@/lib/supplierValidation";
 
 export default function AddSupplierPage() {
+  const OTHER_ENTITY = "__other__";
   const router = useRouter();
   const [supplierName, setSupplierName] = useState("");
   const [supplierContact, setSupplierContact] = useState("");
+  const [entity, setEntity] = useState("");
+  const [customEntity, setCustomEntity] = useState("");
+  const [entityOptions, setEntityOptions] = useState<string[]>([]);
+  const [canManageEntities, setCanManageEntities] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +34,20 @@ export default function AddSupplierPage() {
         const role = String(data?.user?.role || "").trim().toLowerCase().replace(/_/g, " ");
         if (!data?.user || (role !== "admin" && role !== "super admin")) {
           router.replace("/inventoryDashboard/suppliers");
+          return;
+        }
+
+        const currentEntity = String(data.user.entity || "");
+        const superAdmin = role === "super admin" && currentEntity.toLowerCase() === "admin";
+        setCanManageEntities(superAdmin);
+        setEntity(currentEntity);
+
+        if (superAdmin) {
+          const usersResponse = await fetch("/api/admin/users");
+          if (usersResponse.ok) {
+            const users = (await usersResponse.json()) as Array<{ entity?: string }>;
+            setEntityOptions(Array.from(new Set(users.map((user) => user.entity).filter((value): value is string => Boolean(value?.trim())))).sort((a, b) => a.localeCompare(b)));
+          }
         }
       } catch {
         if (mounted) {
@@ -51,6 +70,17 @@ export default function AddSupplierPage() {
     setError(null);
 
     const trimmedContact = supplierContact.trim();
+    const resolvedEntity = canManageEntities
+      ? entity === OTHER_ENTITY
+        ? customEntity.trim()
+        : entity.trim()
+      : entity.trim();
+
+    if (!resolvedEntity) {
+      setError("Please select an entity.");
+      setLoading(false);
+      return;
+    }
 
     if (!isValidSupplierContact(trimmedContact)) {
       setError(SUPPLIER_PHONE_ERROR_MESSAGE);
@@ -62,7 +92,7 @@ export default function AddSupplierPage() {
       const res = await fetch("/api/suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, supplierContact: `+971${trimmedContact}` }),
+        body: JSON.stringify({ supplierName, supplierContact: `+971${trimmedContact}`, entity: resolvedEntity }),
       });
 
       const data = await res.json();
@@ -75,6 +105,7 @@ export default function AddSupplierPage() {
       setMessage("Supplier added successfully.");
       setSupplierName("");
       setSupplierContact("");
+      setCustomEntity("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -95,6 +126,32 @@ export default function AddSupplierPage() {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">Supplier Name</label>
             <Input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} placeholder="Supplier name" required />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">Entity</label>
+            {canManageEntities ? (
+              <select
+                value={entity}
+                onChange={(event) => setEntity(event.target.value)}
+                required
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+              >
+                <option value="">Select an entity</option>
+                {entityOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                <option value={OTHER_ENTITY}>Other</option>
+              </select>
+            ) : (
+              <Input value={entity} readOnly required />
+            )}
+            {canManageEntities && entity === OTHER_ENTITY && (
+              <Input
+                value={customEntity}
+                onChange={(event) => setCustomEntity(event.target.value)}
+                placeholder="Please specify the entity"
+                required
+              />
+            )}
           </div>
 
           <div className="space-y-2">

@@ -15,14 +15,16 @@ export type ItemWithSupplier = Prisma.ItemsGetPayload<{
 interface ItemsDashboardProps {
   items: ItemWithSupplier[];
   isAdmin: boolean;
+  initialPage?: number;
+  selectedEntity?: string;
 }
 
-export function ItemsDashboard({ items, isAdmin }: ItemsDashboardProps) {
+export function ItemsDashboard({ items, isAdmin, initialPage = 1, selectedEntity }: ItemsDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedSupplier, setSelectedSupplier] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const itemsPerPage = 6;
 
   const supplierOptions = useMemo(() => {
@@ -328,7 +330,7 @@ export function ItemsDashboard({ items, isAdmin }: ItemsDashboardProps) {
 
                     {isAdmin && (
                       <Link
-                        href={`/inventoryDashboard/items/${item.item_id}/edit`}
+                        href={`/inventoryDashboard/items/${item.item_id}/edit?${new URLSearchParams({ ...(selectedEntity ? { entity: selectedEntity } : {}), page: String(safeCurrentPage) }).toString()}`}
                         className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
                       >
                         Edit

@@ -10,13 +10,15 @@ interface SupplierDashboardProps {
   inactiveSuppliers: Supplier[];
   supplierOrderMap: Record<string, number>;
   isAdmin: boolean;
+  initialPage?: number;
+  selectedEntity?: string;
 }
 
-export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, supplierOrderMap, isAdmin }: SupplierDashboardProps) {
+export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, supplierOrderMap, isAdmin, initialPage = 1, selectedEntity }: SupplierDashboardProps) {
   const router = useRouter();
   const [showInactive, setShowInactive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [confirmation, setConfirmation] = useState<{
     supplierId: number;
     supplierName: string;
@@ -198,7 +200,7 @@ export function SupplierDashboard({ activeSuppliers, inactiveSuppliers, supplier
                 {!showInactive && isAdmin && (
                   <>
                     <Link
-                      href={`/inventoryDashboard/suppliers/${supplier.supplier_id}/edit`}
+                      href={`/inventoryDashboard/suppliers/${supplier.supplier_id}/edit?${new URLSearchParams({ ...(selectedEntity ? { entity: selectedEntity } : {}), page: String(currentPage) }).toString()}`}
                       className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
                     >
                       Edit

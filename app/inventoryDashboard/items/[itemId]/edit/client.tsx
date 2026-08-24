@@ -24,6 +24,7 @@ interface ItemData {
   item_file_photo_link: string;
   item_delivery_date: string;
   supplier_id: number;
+  entity: string;
 }
 
 function getFileNameFromUrl(url: string) {
@@ -40,9 +41,11 @@ function getFileNameFromUrl(url: string) {
 
 interface EditItemClientProps {
   itemId: string;
+  page?: string;
+  entity?: string;
 }
 
-export default function EditItemClient({ itemId }: EditItemClientProps) {
+export default function EditItemClient({ itemId, page, entity }: EditItemClientProps) {
   const router = useRouter();
   const itemIdNumber = Number(itemId);
 
@@ -174,7 +177,7 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
       }
 
       setMessage("Item updated successfully.");
-      router.push("/inventoryDashboard/items");
+      router.push(`/inventoryDashboard/items?${new URLSearchParams({ ...(entity ? { entity } : {}), page: page || "1" }).toString()}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -351,7 +354,7 @@ export default function EditItemClient({ itemId }: EditItemClientProps) {
           <Button type="submit" disabled={loading} className="rounded-3xl px-6 py-3">
             {loading ? "Saving..." : "Save Changes"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => router.push("/inventoryDashboard/items")} className="rounded-3xl px-6 py-3">
+          <Button type="button" variant="secondary" onClick={() => router.push(`/inventoryDashboard/items?${new URLSearchParams({ ...(entity ? { entity } : {}), page: page || "1" }).toString()}`)} className="rounded-3xl px-6 py-3">
             Back
           </Button>
         </div>
