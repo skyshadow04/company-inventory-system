@@ -57,7 +57,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const selectedYear = String(resolvedSearchParams.year ?? "all");
   const selectedMonth = String(resolvedSearchParams.month ?? "all");
-  const selectedEntity = String(resolvedSearchParams.entity ?? "all");
+  const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
   const superAdmin = isSuperAdmin(currentUser);
   const entityOptions = superAdmin
     ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
@@ -128,7 +128,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </p>
           <h1 className="mt-2 text-3xl font-bold text-slate-900">Dashboard</h1>
         </div>
-        {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity} />}
+        {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity || ""} />}
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">

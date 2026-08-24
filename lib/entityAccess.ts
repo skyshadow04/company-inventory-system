@@ -42,6 +42,10 @@ export function selectedEntityFilter(
   user: { role: string; entity: string },
   selectedEntity?: string,
 ) {
+  if (isSuperAdmin(user) && !selectedEntity) {
+    return { entity: "__entity_selection_required__" };
+  }
+
   if (isSuperAdmin(user) && selectedEntity && selectedEntity !== "all") {
     return { entity: selectedEntity };
   }

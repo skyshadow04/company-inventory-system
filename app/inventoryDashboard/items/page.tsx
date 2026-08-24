@@ -22,7 +22,7 @@ export default async function ItemsDashboardPage({ searchParams }: { searchParam
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const selectedEntity = String(resolvedSearchParams.entity ?? "all");
+  const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
   const superAdmin = isSuperAdmin(currentUser);
   const entityOptions = superAdmin
     ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
@@ -53,7 +53,7 @@ export default async function ItemsDashboardPage({ searchParams }: { searchParam
         )}
       </div>
 
-      {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity} />}
+      {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity || ""} />}
 
       <ItemsDashboard items={items} isAdmin={isAdmin} />
     </main>

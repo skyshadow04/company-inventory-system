@@ -13,6 +13,7 @@ export function EntityFilter({ entities, selectedEntity }: EntityFilterProps) {
         defaultValue={selectedEntity}
         className="rounded-full border border-slate-300 bg-white px-3 py-2 text-slate-700"
       >
+        <option value="">Select an entity</option>
         <option value="all">All entities</option>
         {entities.map((entity) => (
           <option key={entity} value={entity}>{entity}</option>

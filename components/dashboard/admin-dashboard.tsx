@@ -26,6 +26,7 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [customEntity, setCustomEntity] = useState("");
@@ -62,6 +63,13 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
       return matchesQuery && matchesRole;
     });
   }, [searchQuery, selectedRole, users]);
+  const usersPerPage = 6;
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedUsers = filteredUsers.slice(
+    (safeCurrentPage - 1) * usersPerPage,
+    safeCurrentPage * usersPerPage,
+  );
 
   const openEditModal = (user: AdminUser) => {
     setIsCreatingUser(false);
@@ -207,6 +215,7 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
             value={searchQuery}
             onChange={(event) => {
               setSearchQuery(event.target.value);
+              setCurrentPage(1);
             }}
             placeholder="Search users by name, email, role, or ID"
             className="w-full rounded-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
@@ -226,7 +235,10 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
           <span>Role</span>
           <select
             value={selectedRole}
-            onChange={(event) => setSelectedRole(event.target.value)}
+            onChange={(event) => {
+              setSelectedRole(event.target.value);
+              setCurrentPage(1);
+            }}
             className="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
           >
             <option value="all">All roles</option>
@@ -255,7 +267,7 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredUsers.map((user) => (
+          {paginatedUsers.map((user) => (
             <div
               key={user.id}
               className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-sky-200 hover:shadow-xl"
@@ -299,6 +311,43 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {filteredUsers.length > 0 && totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={safeCurrentPage === 1}
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+            <button
+              key={pageNumber}
+              type="button"
+              onClick={() => setCurrentPage(pageNumber)}
+              className={`h-9 min-w-9 rounded-full border px-3 text-sm font-medium transition ${
+                safeCurrentPage === pageNumber
+                  ? "border-sky-500 bg-sky-500 text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {pageNumber}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={safeCurrentPage === totalPages}
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       )}
 
