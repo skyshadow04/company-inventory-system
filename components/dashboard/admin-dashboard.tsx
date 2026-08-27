@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export type AdminUser = {
   id: number;
   name: string;
+  image_link: string;
   company_number: string | null;
   email: string;
   role: string;
@@ -273,9 +275,18 @@ export function AdminDashboard({ users, currentUserEntity, canManageEntities }: 
               className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-sky-200 hover:shadow-xl"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Image
+                    src={user.image_link}
+                    alt={`${user.name}'s profile`}
+                    width={48}
+                    height={48}
+                    className="size-12 shrink-0 rounded-full object-cover"
+                  />
+                  <div className="min-w-0">
                   <p className="text-sm text-slate-500">User ID: {user.id}</p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-900">{user.name}</h2>
+                  <h2 className="mt-1 truncate text-xl font-semibold text-slate-900">{user.name}</h2>
+                  </div>
                 </div>
                 <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-700">
                   {user.role}

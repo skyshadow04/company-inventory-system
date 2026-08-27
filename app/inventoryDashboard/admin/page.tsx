@@ -32,6 +32,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
     select: {
       id: true,
       name: true,
+      image_link: true,
       company_number: true,
       email: true,
       role: true,

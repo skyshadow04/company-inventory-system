@@ -80,6 +80,17 @@ export async function POST(req: Request) {
       },
     });
 
+    await prisma.assetHistory.create({
+      data: {
+        asset_id: asset.asset_id,
+        user_id: currentUser.id,
+        action: "created",
+        asset_owner: asset.asset_owner,
+        asset_status: asset.asset_status,
+        entity: asset.entity,
+      },
+    });
+
     return NextResponse.json(asset);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

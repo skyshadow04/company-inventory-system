@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -15,6 +15,15 @@ export type AssetRecord = {
   asset_image_link: string | null;
 };
 
+type AssetHistoryRecord = {
+  asset_history_id: number;
+  asset_history_date: string;
+  action: string;
+  asset_owner: string;
+  asset_status: string;
+  user: { name: string; email: string };
+};
+
 interface AssetDashboardProps {
   assets: AssetRecord[];
   isAdmin: boolean;
@@ -27,7 +36,26 @@ export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 
   const [selectedOwner, setSelectedOwner] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const [historyAsset, setHistoryAsset] = useState<AssetRecord | null>(null);
+  const [history, setHistory] = useState<AssetHistoryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const itemsPerPage = 6;
+
+  useEffect(() => {
+    if (!historyAsset) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setHistoryAsset(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [historyAsset]);
 
   const ownerOptions = useMemo(() => {
     const owners = Array.from(new Set(assets.map((asset) => asset.asset_owner))).sort((a, b) =>
@@ -84,13 +112,34 @@ export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 
       Owner: asset.asset_owner,
       Status: asset.asset_status,
       Type: asset.asset_type,
-      ImageURL: asset.asset_image_link || "",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Assets");
     XLSX.writeFile(workbook, "assets.xlsx");
+  };
+
+  const handleShowHistory = async (asset: AssetRecord) => {
+    setHistoryAsset(asset);
+    setHistory([]);
+    setHistoryError(null);
+    setHistoryLoading(true);
+
+    try {
+      const response = await fetch(`/api/assets/${asset.asset_id}/history`);
+      const data = (await response.json()) as { history?: AssetHistoryRecord[]; message?: string };
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load asset history.");
+      }
+
+      setHistory(data.history || []);
+    } catch (error: unknown) {
+      setHistoryError(error instanceof Error ? error.message : "Unable to load asset history.");
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   return (
@@ -235,12 +284,21 @@ export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 
 
                   <div className="flex flex-wrap items-center gap-2 pt-2">
                     {isAdmin && (
-                      <Link
-                        href={`/inventoryDashboard/assets/${asset.asset_id}/edit?${new URLSearchParams({ ...(selectedEntity ? { entity: selectedEntity } : {}), page: String(safeCurrentPage) }).toString()}`}
-                        className="inline-flex rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-                      >
-                        Edit
-                      </Link>
+                      <>
+                        <Link
+                          href={`/inventoryDashboard/assets/${asset.asset_id}/edit?${new URLSearchParams({ ...(selectedEntity ? { entity: selectedEntity } : {}), page: String(safeCurrentPage) }).toString()}`}
+                          className="inline-flex rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => void handleShowHistory(asset)}
+                          className="inline-flex rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                          History
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -289,6 +347,83 @@ export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 
             </div>
           )}
         </>
+      )}
+
+      {historyAsset && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setHistoryAsset(null);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="asset-history-title"
+            className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-500">Asset History</p>
+                <h2 id="asset-history-title" className="mt-2 text-xl font-semibold text-slate-900">
+                  {historyAsset.asset_name}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  ID: {historyAsset.asset_id} | Current owner: {historyAsset.asset_owner}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryAsset(null)}
+                aria-label="Close asset history"
+                className="rounded-lg px-3 py-2 text-xl leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="max-h-[calc(85vh-130px)] overflow-y-auto p-6">
+              {historyLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">Loading history...</p>
+              ) : historyError ? (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{historyError}</p>
+              ) : history.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500">No history recorded for this asset.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead className="text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-3 py-3 font-semibold">Date</th>
+                        <th className="px-3 py-3 font-semibold">Action</th>
+                        <th className="px-3 py-3 font-semibold">Owner</th>
+                        <th className="px-3 py-3 font-semibold">Status</th>
+                        <th className="px-3 py-3 font-semibold">Changed by</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {history.map((entry) => (
+                        <tr key={entry.asset_history_id}>
+                          <td className="whitespace-nowrap px-3 py-4">{new Date(entry.asset_history_date).toLocaleString()}</td>
+                          <td className="px-3 py-4 font-medium capitalize">{entry.action}</td>
+                          <td className="px-3 py-4">{entry.asset_owner}</td>
+                          <td className="px-3 py-4">{entry.asset_status}</td>
+                          <td className="px-3 py-4">
+                            <div>{entry.user.name}</div>
+                            <div className="text-xs text-slate-500">{entry.user.email}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

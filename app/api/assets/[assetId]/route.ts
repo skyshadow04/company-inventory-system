@@ -103,17 +103,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
       return NextResponse.json({ message: "Failed to update asset image.", error: errorMessage }, { status: 500 });
     }
 
-    const updatedAsset = await prisma.assets.update({
-      where: { asset_id: assetIdNumber },
-      data: {
-        asset_name,
-        asset_serial_number,
-        asset_owner,
-        asset_status: asset_status || "Used",
-        asset_type,
-        asset_image_link: nextImageLink,
-      },
-    });
+    const [updatedAsset] = await prisma.$transaction([
+      prisma.assets.update({
+        where: { asset_id: assetIdNumber },
+        data: {
+          asset_name,
+          asset_serial_number,
+          asset_owner,
+          asset_status: asset_status || "Used",
+          asset_type,
+          asset_image_link: nextImageLink,
+        },
+      }),
+      prisma.assetHistory.create({
+        data: {
+          asset_id: assetIdNumber,
+          user_id: currentUser.id,
+          action: "updated",
+          asset_owner,
+          asset_status: asset_status || "Used",
+          entity: existingAsset.entity,
+        },
+      }),
+    ]);
 
     return NextResponse.json(updatedAsset);
   } catch (error: unknown) {

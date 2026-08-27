@@ -12,53 +12,78 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User{
-  id Int @id @default(autoincrement())
-  name String
-  company_number String? @unique
-  email String @unique
-  password String 
-  role String @default("staff")
-  isActive Boolean @default(true)
-  createdAt DateTime @default(now())
-  image_link String @default("https://u1ziwjw0vor3e4ce.public.blob.vercel-storage.com/profile/default-pfp.png")
-  entity String @default("Leadership")
+model User {
+  id             Int            @id @default(autoincrement())
+  name           String
+  company_number String?        @unique
+  email          String         @unique
+  password       String
+  role           String         @default("staff")
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  image_link     String         @default("https://u1ziwjw0vor3e4ce.public.blob.vercel-storage.com/profile/default-pfp.png")
+  entity         String         @default("Leadership")
+  etisalatBills  EtisalatBill[]
+  assetHistories AssetHistory[]
 }
 
-model Supplier{
-  supplier_id Int @id @default(autoincrement())
-  supplier_name String
+model Supplier {
+  supplier_id             Int      @id @default(autoincrement())
+  supplier_name           String
   supplier_contact_number String
-  isActive Boolean @default(true)
-  created_at DateTime @default(now())
-  items Items[]
-  entity String @default("")
+  isActive                Boolean  @default(true)
+  created_at              DateTime @default(now())
+  items                   Items[]
+  entity                  String   @default("")
 }
 
-model Items{
-  item_id Int @id @default(autoincrement())
-  item_name String
-  item_serial_number String @default("")
-  item_code String @default("")
-  item_price String
-  item_type String
-  item_quantity Int @default(0)
-  item_description String @default("")
-  supplier_id Int
-  item_file_link String @default("")
-  item_file_photo_link String @default("")
-  item_delivery_date DateTime @default(now())
-  supplier Supplier @relation(fields: [supplier_id], references: [supplier_id])
-  entity String @default("Leadership")
+model Items {
+  item_id              Int      @id @default(autoincrement())
+  item_name            String
+  item_serial_number   String   @default("")
+  item_code            String   @default("")
+  item_price           String
+  item_type            String
+  item_quantity        Int      @default(0)
+  item_description     String   @default("")
+  supplier_id          Int
+  item_file_link       String   @default("")
+  item_file_photo_link String   @default("")
+  item_delivery_date   DateTime @default(now())
+  supplier             Supplier @relation(fields: [supplier_id], references: [supplier_id])
+  entity               String   @default("Leadership")
 }
 
-model Assets{
-  asset_id Int @id @default(autoincrement())
-  asset_name String
-  asset_serial_number String @default("")
-  asset_owner String
-  asset_status String @default("Used")
-  asset_type String 
-  asset_image_link String @default("")
-  entity String @default("Leadership")
+model Assets {
+  asset_id            Int            @id @default(autoincrement())
+  asset_name          String
+  asset_serial_number String         @default("")
+  asset_owner         String
+  asset_status        String         @default("Used")
+  asset_type          String
+  asset_image_link    String         @default("")
+  entity              String         @default("Leadership")
+  histories           AssetHistory[]
+}
+
+model EtisalatBill {
+  etisalat_bill_id     Int      @id @default(autoincrement())
+  user_id              Int
+  user                 User     @relation(fields: [user_id], references: [id])
+  etisalat_bill_entity String   @default("")
+  etisalat_bill_month  DateTime @default(now())
+  etisalat_bill_status String   @default("unpaid")
+}
+
+model AssetHistory {
+  asset_history_id   Int      @id @default(autoincrement())
+  asset_history_date DateTime @default(now())
+  asset_id           Int
+  asset              Assets   @relation(fields: [asset_id], references: [asset_id], onDelete: Cascade)
+  user_id            Int
+  user               User     @relation(fields: [user_id], references: [id])
+  action             String   @default("updated")
+  asset_owner        String
+  asset_status       String
+  entity             String   @default("")
 }

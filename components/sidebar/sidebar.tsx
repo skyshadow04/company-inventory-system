@@ -10,6 +10,7 @@ const navItems = [
   { href: "/inventoryDashboard/assets", label: "Assets" },
   { href: "/inventoryDashboard/suppliers", label: "Suppliers" },
   { href: "/inventoryDashboard/items", label: "Items" },
+  { href: "/inventoryDashboard/etisalatbill", label: "Etisalat Bills" },
   { href: "/inventoryDashboard/admin", label: "Admin", adminOnly: true },
 ];
 
