@@ -67,6 +67,10 @@ export default function EditItemClient({ itemId, page, entity }: EditItemClientP
   const [removeItemPhoto, setRemoveItemPhoto] = useState(false);
   const [currentItemFileLink, setCurrentItemFileLink] = useState("");
   const [currentItemPhotoLink, setCurrentItemPhotoLink] = useState("");
+  const [photoMode, setPhotoMode] = useState<"upload" | "reuse">("upload");
+  const [copyFromItemId, setCopyFromItemId] = useState("");
+  const [availableItems, setAvailableItems] = useState<Array<{ item_id: number; item_name: string; item_file_photo_link: string }>>([]);
+  const [selectedItemPreview, setSelectedItemPreview] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
@@ -75,10 +79,11 @@ export default function EditItemClient({ itemId, page, entity }: EditItemClientP
   useEffect(() => {
     async function loadItemData() {
       try {
-        const [suppliersResponse, itemTypesResponse, itemResponse] = await Promise.all([
+        const [suppliersResponse, itemTypesResponse, itemResponse, allItemsResponse] = await Promise.all([
           fetch("/api/suppliers"),
           fetch("/api/items"),
           fetch(`/api/items/${itemIdNumber}`),
+          fetch("/api/items"),
         ]);
 
         if (!suppliersResponse.ok) {
@@ -90,10 +95,10 @@ export default function EditItemClient({ itemId, page, entity }: EditItemClientP
         }
 
         const suppliersData = await suppliersResponse.json();
-        const itemTypesData = (await itemTypesResponse.json()) as Array<{ item_type?: string }>;
+        const itemTypeOptionsData = (await itemTypesResponse.json()) as Array<{ item_type?: string; item_id?: number; item_name?: string; item_file_photo_link?: string }>;
         const uniqueTypes = Array.from(
           new Set(
-            itemTypesData
+            itemTypeOptionsData
               .map((record) => record.item_type)
               .filter((type): type is string => Boolean(type && type.trim())),
           ),
@@ -118,6 +123,16 @@ export default function EditItemClient({ itemId, page, entity }: EditItemClientP
         setItemDeliveryDate(
           data.item_delivery_date ? new Date(data.item_delivery_date).toISOString().slice(0, 10) : "",
         );
+
+        const allItemsData = (await allItemsResponse.json()) as Array<{ item_id?: number; item_name?: string; item_file_photo_link?: string }>;
+        const itemsWithPhotos = allItemsData
+          .filter((item) => item.item_file_photo_link && item.item_file_photo_link.trim() && item.item_id !== itemIdNumber)
+          .map((item) => ({
+            item_id: item.item_id || 0,
+            item_name: item.item_name || "Unknown",
+            item_file_photo_link: item.item_file_photo_link || "",
+          }));
+        setAvailableItems(itemsWithPhotos);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unable to load item details.");
       } finally {
@@ -153,7 +168,9 @@ export default function EditItemClient({ itemId, page, entity }: EditItemClientP
         formData.append("item_file", itemFile);
       }
 
-      if (itemPhoto) {
+      if (photoMode === "reuse" && copyFromItemId) {
+        formData.append("copy_from_item_id", copyFromItemId);
+      } else if (photoMode === "upload" && itemPhoto) {
         formData.append("item_photo", itemPhoto);
       }
 
@@ -294,19 +311,80 @@ export default function EditItemClient({ itemId, page, entity }: EditItemClientP
             ) : (
               <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">No photo uploaded.</p>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setItemPhoto(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
-            />
+            <div className="space-y-3">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="photoModeEdit"
+                    value="upload"
+                    checked={photoMode === "upload"}
+                    onChange={() => {
+                      setPhotoMode("upload");
+                      setCopyFromItemId("");
+                      setSelectedItemPreview("");
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">Upload New Photo</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="photoModeEdit"
+                    value="reuse"
+                    checked={photoMode === "reuse"}
+                    onChange={() => setPhotoMode("reuse")}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">Reuse Existing Photo</span>
+                </label>
+              </div>
+
+              {photoMode === "upload" ? (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setItemPhoto(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+                  />
+                  {itemPhoto && <p className="text-xs text-slate-600 mt-1">New photo selected: {itemPhoto.name}</p>}
+                </>
+              ) : (
+                <>
+                  <select
+                    value={copyFromItemId}
+                    onChange={(e) => {
+                      const itemId = e.target.value;
+                      setCopyFromItemId(itemId);
+                      const selectedItem = availableItems.find((item) => item.item_id === Number(itemId));
+                      setSelectedItemPreview(selectedItem?.item_file_photo_link || "");
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                  >
+                    <option value="">Select an item with photo</option>
+                    {availableItems.map((item) => (
+                      <option key={item.item_id} value={item.item_id}>
+                        {item.item_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedItemPreview && (
+                    <div className="mt-3 rounded-lg border border-slate-200 p-2">
+                      <p className="text-xs font-medium text-slate-600 mb-2">Photo Preview:</p>
+                      <img src={selectedItemPreview} alt="Selected item photo" className="h-32 w-full object-cover rounded" />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
             {currentItemPhotoLink && (
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked={removeItemPhoto} onChange={(e) => setRemoveItemPhoto(e.target.checked)} />
                 Remove current photo
               </label>
             )}
-            {itemPhoto && <p className="text-xs text-slate-600 mt-1">New photo selected: {itemPhoto.name}</p>}
           </div>
         </div>
 

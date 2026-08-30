@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     const supplier_id = formData.get("supplier_id") as string;
     const itemFile = formData.get("item_file") as File | null;
     const itemPhoto = formData.get("item_photo") as File | null;
+    const copyFromItemId = formData.get("copy_from_item_id") as string | null;
 
     if (!item_name || !item_code || !supplier_id) {
       return NextResponse.json({ message: "Missing required fields." }, { status: 400 });
@@ -95,7 +96,23 @@ export async function POST(req: Request) {
         item_file_link = blob.url;
       }
 
-      if (itemPhoto) {
+      if (copyFromItemId) {
+        // Copy photo from existing item
+        const copyFromItemIdNumber = Number(copyFromItemId);
+        if (!Number.isNaN(copyFromItemIdNumber)) {
+          const sourceItem = await prisma.items.findFirst({
+            where: {
+              item_id: copyFromItemIdNumber,
+              ...selectedEntityFilter(currentUser),
+            },
+          });
+
+          if (sourceItem && sourceItem.item_file_photo_link) {
+            item_file_photo_link = sourceItem.item_file_photo_link;
+          }
+        }
+      } else if (itemPhoto) {
+        // Upload new photo
         const timestamp = Date.now();
         const filename = `items/${item_code}/photo-${timestamp}-${itemPhoto.name}`;
         const blob = await put(filename, itemPhoto, {

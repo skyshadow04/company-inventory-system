@@ -71,6 +71,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
     const itemPhoto = formData.get("item_photo");
     const removeItemFile = formData.get("remove_item_file") === "true";
     const removeItemPhoto = formData.get("remove_item_photo") === "true";
+    const copyFromItemId = formData.get("copy_from_item_id") as string | null;
 
     if (!item_name || !item_code || !supplier_id) {
       return NextResponse.json({ message: "Missing required fields." }, { status: 400 });
@@ -125,7 +126,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ itemId: 
         nextItemPhotoLink = "";
       }
 
-      if (itemPhoto instanceof File && itemPhoto.size > 0) {
+      if (copyFromItemId) {
+        // Copy photo from existing item
+        const copyFromItemIdNumber = Number(copyFromItemId);
+        if (!Number.isNaN(copyFromItemIdNumber)) {
+          const sourceItem = await prisma.items.findFirst({
+            where: {
+              item_id: copyFromItemIdNumber,
+              ...selectedEntityFilter(currentUser, "all"),
+            },
+          });
+
+          if (sourceItem && sourceItem.item_file_photo_link) {
+            nextItemPhotoLink = sourceItem.item_file_photo_link;
+          }
+        }
+      } else if (itemPhoto instanceof File && itemPhoto.size > 0) {
         if (existingItem.item_file_photo_link) {
           await del(existingItem.item_file_photo_link, { token: process.env.BLOB_READ_WRITE_TOKEN });
         }

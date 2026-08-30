@@ -64,6 +64,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
     const asset_type = String(formData.get("asset_type") ?? "").trim();
     const assetImage = formData.get("asset_image");
     const removeAssetImage = formData.get("remove_asset_image") === "true";
+    const copyFromAssetId = formData.get("copy_from_asset_id") as string | null;
 
     if (!asset_name || !asset_owner || !asset_type) {
       return NextResponse.json({ message: "Asset name, owner, and type are required." }, { status: 400 });
@@ -85,7 +86,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ assetId:
         nextImageLink = "";
       }
 
-      if (assetImage instanceof File && assetImage.size > 0) {
+      if (copyFromAssetId) {
+        // Copy image from existing asset
+        const copyFromAssetIdNumber = Number(copyFromAssetId);
+        if (!Number.isNaN(copyFromAssetIdNumber)) {
+          const sourceAsset = await prisma.assets.findFirst({
+            where: {
+              asset_id: copyFromAssetIdNumber,
+              ...selectedEntityFilter(currentUser),
+            },
+          });
+
+          if (sourceAsset && sourceAsset.asset_image_link) {
+            nextImageLink = sourceAsset.asset_image_link;
+          }
+        }
+      } else if (assetImage instanceof File && assetImage.size > 0) {
         if (existingAsset.asset_image_link) {
           await del(existingAsset.asset_image_link, { token: process.env.BLOB_READ_WRITE_TOKEN });
         }

@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     const asset_status = String(formData.get("asset_status") ?? "Used").trim();
     const asset_type = String(formData.get("asset_type") ?? "").trim();
     const assetImage = formData.get("asset_image");
+    const copyFromAssetId = formData.get("copy_from_asset_id") as string | null;
 
     if (!asset_name || !asset_owner || !asset_type) {
       return NextResponse.json({ message: "Asset name, owner, and type are required." }, { status: 400 });
@@ -58,7 +59,22 @@ export async function POST(req: Request) {
 
     let asset_image_link = "";
 
-    if (assetImage instanceof File && assetImage.size > 0) {
+    if (copyFromAssetId) {
+      // Copy image from existing asset
+      const copyFromAssetIdNumber = Number(copyFromAssetId);
+      if (!Number.isNaN(copyFromAssetIdNumber)) {
+        const sourceAsset = await prisma.assets.findFirst({
+          where: {
+            asset_id: copyFromAssetIdNumber,
+            ...selectedEntityFilter(currentUser),
+          },
+        });
+
+        if (sourceAsset && sourceAsset.asset_image_link) {
+          asset_image_link = sourceAsset.asset_image_link;
+        }
+      }
+    } else if (assetImage instanceof File && assetImage.size > 0) {
       const timestamp = Date.now();
       const filename = `assets/${asset_name.replace(/\s+/g, "-")}/${timestamp}-${assetImage.name}`;
       const blob = await put(filename, assetImage, {

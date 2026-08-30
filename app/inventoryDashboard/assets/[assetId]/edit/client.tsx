@@ -40,6 +40,10 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
   const [currentAssetImage, setCurrentAssetImage] = useState("");
   const [removeAssetImage, setRemoveAssetImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState<"upload" | "reuse">("upload");
+  const [copyFromAssetId, setCopyFromAssetId] = useState("");
+  const [availableAssets, setAvailableAssets] = useState<Array<{ asset_id: number; asset_name: string; asset_image_link: string }>>([]);
+  const [selectedAssetPreview, setSelectedAssetPreview] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +61,11 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
           throw new Error("Asset not found.");
         }
 
-        const assetsData = (await assetTypesResponse.json()) as Array<{
+        const assetListData = (await assetTypesResponse.json()) as Array<{
           asset_type?: string;
+          asset_id?: number;
+          asset_name?: string;
+          asset_image_link?: string;
         }>;
         const data = (await assetResponse.json()) as AssetData;
         const usersData = (await usersResponse.json()) as Array<{ name?: string; entity?: string }>;
@@ -68,7 +75,7 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
         ).sort((a, b) => a.localeCompare(b));
         const uniqueTypes = Array.from(
           new Set(
-            assetsData
+            assetListData
               .map((record) => record.asset_type)
               .filter((type): type is string => Boolean(type && type.trim())),
           ),
@@ -87,6 +94,15 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
         setAssetType(currentAssetType && uniqueTypes.includes(currentAssetType) ? currentAssetType : "Other");
         setCustomAssetType(currentAssetType && uniqueTypes.includes(currentAssetType) ? "" : currentAssetType);
         setCurrentAssetImage(data.asset_image_link || "");
+
+        const assetsWithImages = assetListData
+          .filter((asset) => asset.asset_image_link && asset.asset_image_link.trim() && asset.asset_id !== assetIdNumber)
+          .map((asset) => ({
+            asset_id: asset.asset_id || 0,
+            asset_name: asset.asset_name || "Unknown",
+            asset_image_link: asset.asset_image_link || "",
+          }));
+        setAvailableAssets(assetsWithImages);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unable to load asset details.");
       } finally {
@@ -114,7 +130,9 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
       formData.append("asset_status", assetStatus);
       formData.append("asset_type", finalAssetType);
 
-      if (assetImage) {
+      if (imageMode === "reuse" && copyFromAssetId) {
+        formData.append("copy_from_asset_id", copyFromAssetId);
+      } else if (imageMode === "upload" && assetImage) {
         formData.append("asset_image", assetImage);
       }
 
@@ -135,6 +153,9 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
 
       const entity = selectedEntity || data?.entity || "";
       router.push(`/inventoryDashboard/assets?${new URLSearchParams({ entity, page: page || "1" }).toString()}`);
+      setImageMode("upload");
+      setCopyFromAssetId("");
+      setSelectedAssetPreview("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -252,20 +273,79 @@ export default function EditAssetClient({ assetId, selectedEntity, page }: EditA
               <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">No image uploaded.</p>
             )}
 
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                setAssetImage(file);
-                setImagePreview(file ? URL.createObjectURL(file) : null);
-                setRemoveAssetImage(false);
-              }}
-              className="mt-2 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
-            />
+            <div className="space-y-3">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="imageMode"
+                    value="upload"
+                    checked={imageMode === "upload"}
+                    onChange={() => {
+                      setImageMode("upload");
+                      setCopyFromAssetId("");
+                      setSelectedAssetPreview("");
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">Upload New Image</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="imageMode"
+                    value="reuse"
+                    checked={imageMode === "reuse"}
+                    onChange={() => setImageMode("reuse")}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">Reuse Existing Image</span>
+                </label>
+              </div>
+
+              {imageMode === "upload" ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setAssetImage(file);
+                    setImagePreview(file ? URL.createObjectURL(file) : null);
+                    setRemoveAssetImage(false);
+                  }}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+                />
+              ) : (
+                <>
+                  <select
+                    value={copyFromAssetId}
+                    onChange={(e) => {
+                      const assetId = e.target.value;
+                      setCopyFromAssetId(assetId);
+                      const selectedAsset = availableAssets.find((asset) => asset.asset_id === Number(assetId));
+                      setSelectedAssetPreview(selectedAsset?.asset_image_link || "");
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                  >
+                    <option value="">Select an asset with image</option>
+                    {availableAssets.map((asset) => (
+                      <option key={asset.asset_id} value={asset.asset_id}>
+                        {asset.asset_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedAssetPreview && (
+                    <div className="mt-3 rounded-lg border border-slate-200 p-2">
+                      <p className="text-xs font-medium text-slate-600 mb-2">Image Preview:</p>
+                      <img src={selectedAssetPreview} alt="Selected asset image" className="h-32 w-full object-cover rounded" />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             {currentAssetImage && (
-              <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked={removeAssetImage} onChange={(e) => setRemoveAssetImage(e.target.checked)} />
                 Remove current image
               </label>

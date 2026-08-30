@@ -19,6 +19,10 @@ export default function AddAssetPage() {
   const [assetTypeOptions, setAssetTypeOptions] = useState<string[]>([]);
   const [assetImage, setAssetImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState<"upload" | "reuse">("upload");
+  const [copyFromAssetId, setCopyFromAssetId] = useState("");
+  const [availableAssets, setAvailableAssets] = useState<Array<{ asset_id: number; asset_name: string; asset_image_link: string }>>([]);
+  const [selectedAssetPreview, setSelectedAssetPreview] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export default function AddAssetPage() {
           return;
         }
 
-        const data = (await assetsResponse.json()) as Array<{ asset_type?: string }>;
+        const data = (await assetsResponse.json()) as Array<{ asset_type?: string; asset_id?: number; asset_name?: string; asset_image_link?: string }>;
         const users = (await usersResponse.json()) as Array<{ name?: string; entity?: string }>;
         const authResponse = await fetch("/api/auth/me", { credentials: "include" });
         const authData = await authResponse.json();
@@ -80,6 +84,15 @@ export default function AddAssetPage() {
         if (mounted) {
           setAssetOwnerOptions(uniqueOwners);
           setAssetTypeOptions(uniqueTypes);
+          // Filter assets with images for reuse
+          const assetsWithImages = data
+            .filter((asset) => asset.asset_image_link && asset.asset_image_link.trim())
+            .map((asset) => ({
+              asset_id: asset.asset_id || 0,
+              asset_name: asset.asset_name || "Unknown",
+              asset_image_link: asset.asset_image_link || "",
+            }));
+          setAvailableAssets(assetsWithImages);
         }
       } catch {
         if (mounted) {
@@ -112,7 +125,9 @@ export default function AddAssetPage() {
       formData.append("asset_status", assetStatus);
       formData.append("asset_type", finalAssetType);
 
-      if (assetImage) {
+      if (imageMode === "reuse" && copyFromAssetId) {
+        formData.append("copy_from_asset_id", copyFromAssetId);
+      } else if (imageMode === "upload" && assetImage) {
         formData.append("asset_image", assetImage);
       }
 
@@ -138,6 +153,9 @@ export default function AddAssetPage() {
       setCustomAssetType("");
       setAssetImage(null);
       setImagePreview(null);
+      setImageMode("upload");
+      setCopyFromAssetId("");
+      setSelectedAssetPreview("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -235,21 +253,81 @@ export default function AddAssetPage() {
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Asset Image</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                setAssetImage(file);
-                setImagePreview(file ? URL.createObjectURL(file) : null);
-              }}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
-            />
-            {imagePreview && (
-              <div className="relative mt-2 h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                <Image src={imagePreview} alt="Asset preview" fill className="object-cover" />
+            <div className="space-y-3">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="imageMode"
+                    value="upload"
+                    checked={imageMode === "upload"}
+                    onChange={() => {
+                      setImageMode("upload");
+                      setCopyFromAssetId("");
+                      setSelectedAssetPreview("");
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">Upload New Image</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="imageMode"
+                    value="reuse"
+                    checked={imageMode === "reuse"}
+                    onChange={() => setImageMode("reuse")}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">Reuse Existing Image</span>
+                </label>
               </div>
-            )}
+
+              {imageMode === "upload" ? (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setAssetImage(file);
+                      setImagePreview(file ? URL.createObjectURL(file) : null);
+                    }}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+                  />
+                  {imagePreview && (
+                    <div className="relative mt-2 h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                      <Image src={imagePreview} alt="Asset preview" fill className="object-cover" />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <select
+                    value={copyFromAssetId}
+                    onChange={(e) => {
+                      const assetId = e.target.value;
+                      setCopyFromAssetId(assetId);
+                      const selectedAsset = availableAssets.find((asset) => asset.asset_id === Number(assetId));
+                      setSelectedAssetPreview(selectedAsset?.asset_image_link || "");
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                  >
+                    <option value="">Select an asset with image</option>
+                    {availableAssets.map((asset) => (
+                      <option key={asset.asset_id} value={asset.asset_id}>
+                        {asset.asset_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedAssetPreview && (
+                    <div className="relative mt-2 h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                      <Image src={selectedAssetPreview} alt="Selected asset image" fill className="object-cover" />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
