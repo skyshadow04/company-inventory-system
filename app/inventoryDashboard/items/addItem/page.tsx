@@ -13,11 +13,17 @@ interface SupplierOption {
 export default function AddInventoryItemPage() {
   const router = useRouter();
   const [itemName, setItemName] = useState("");
+  const [customItemName, setCustomItemName] = useState("");
   const [itemSerialNumber, setItemSerialNumber] = useState("");
+  const [customItemSerialNumber, setCustomItemSerialNumber] = useState("");
   const [itemCode, setItemCode] = useState("");
+  const [customItemCode, setCustomItemCode] = useState("");
   const [itemType, setItemType] = useState("");
   const [customItemType, setCustomItemType] = useState("");
   const [itemTypeOptions, setItemTypeOptions] = useState<string[]>([]);
+  const [itemNameOptions, setItemNameOptions] = useState<string[]>([]);
+  const [itemSerialNumberOptions, setItemSerialNumberOptions] = useState<string[]>([]);
+  const [itemCodeOptions, setItemCodeOptions] = useState<string[]>([]);
   const [itemQuantity, setItemQuantity] = useState(0);
   const [itemPrice, setItemPrice] = useState("");
   const [itemDescription, setItemDescription] = useState("");
@@ -81,7 +87,17 @@ export default function AddInventoryItemPage() {
           return;
         }
 
-        const data = (await res.json()) as Array<{ item_type?: string; item_id?: number; item_name?: string; item_file_photo_link?: string }>;
+        const data = (await res.json()) as Array<{
+          item_type?: string;
+          item_id?: number;
+          item_name?: string;
+          item_serial_number?: string;
+          item_code?: string;
+          item_file_photo_link?: string;
+        }>;
+        const uniqueValues = (values: Array<string | undefined>) => Array.from(
+          new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))),
+        ).sort((a, b) => a.localeCompare(b));
         const uniqueTypes = Array.from(
           new Set(
             data
@@ -92,6 +108,9 @@ export default function AddInventoryItemPage() {
 
         if (mounted) {
           setItemTypeOptions(uniqueTypes);
+          setItemNameOptions(uniqueValues(data.map((record) => record.item_name)));
+          setItemSerialNumberOptions(uniqueValues(data.map((record) => record.item_serial_number)));
+          setItemCodeOptions(uniqueValues(data.map((record) => record.item_code)));
           // Filter items with photos for reuse
           const itemsWithPhotos = data
             .filter((item) => item.item_file_photo_link && item.item_file_photo_link.trim())
@@ -105,6 +124,9 @@ export default function AddInventoryItemPage() {
       } catch {
         if (mounted) {
           setItemTypeOptions([]);
+          setItemNameOptions([]);
+          setItemSerialNumberOptions([]);
+          setItemCodeOptions([]);
         }
       }
     }
@@ -127,9 +149,9 @@ export default function AddInventoryItemPage() {
     try {
       const formData = new FormData();
       const finalItemType = itemType === "Other" ? customItemType.trim() : itemType;
-      formData.append("item_name", itemName);
-      formData.append("item_serial_number", itemSerialNumber);
-      formData.append("item_code", itemCode);
+      formData.append("item_name", itemName === "Other" ? customItemName.trim() : itemName);
+      formData.append("item_serial_number", itemSerialNumber === "Other" ? customItemSerialNumber.trim() : itemSerialNumber);
+      formData.append("item_code", itemCode === "Other" ? customItemCode.trim() : itemCode);
       formData.append("item_type", finalItemType);
       formData.append("item_quantity", String(itemQuantity));
       formData.append("item_price", itemPrice);
@@ -161,8 +183,11 @@ export default function AddInventoryItemPage() {
 
       setMessage("Item created successfully.");
       setItemName("");
+      setCustomItemName("");
       setItemSerialNumber("");
+      setCustomItemSerialNumber("");
       setItemCode("");
+      setCustomItemCode("");
       setItemType("");
       setCustomItemType("");
       setItemQuantity(0);
@@ -192,22 +217,54 @@ export default function AddInventoryItemPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="grid gap-6 lg:grid-cols-2">
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Item Name</span>
-            <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Office Chair" required />
-          </label>
+            <select
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select item name</option>
+              {[...itemNameOptions, "Other"].map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+            {itemName === "Other" && (
+              <Input value={customItemName} onChange={(e) => setCustomItemName(e.target.value)} placeholder="Please specify the item name" required />
+            )}
+          </div>
 
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Item Serial Number</span>
-            <Input value={itemSerialNumber} onChange={(e) => setItemSerialNumber(e.target.value)} placeholder="e.g. SN-12345" />
-          </label>
+            <select
+              value={itemSerialNumber}
+              onChange={(e) => setItemSerialNumber(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select serial number</option>
+              {[...itemSerialNumberOptions, "Other"].map((serialNumber) => <option key={serialNumber} value={serialNumber}>{serialNumber}</option>)}
+            </select>
+            {itemSerialNumber === "Other" && (
+              <Input value={customItemSerialNumber} onChange={(e) => setCustomItemSerialNumber(e.target.value)} placeholder="Please specify the serial number" />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Item Code</span>
-            <Input value={itemCode} onChange={(e) => setItemCode(e.target.value)} placeholder="e.g. CHR-1024" required />
-          </label>
+            <select
+              value={itemCode}
+              onChange={(e) => setItemCode(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">Select item code</option>
+              {[...itemCodeOptions, "Other"].map((code) => <option key={code} value={code}>{code}</option>)}
+            </select>
+            {itemCode === "Other" && (
+              <Input value={customItemCode} onChange={(e) => setCustomItemCode(e.target.value)} placeholder="Please specify the item code" required />
+            )}
+          </div>
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Item Type</span>

@@ -181,6 +181,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </p>
 
           <form method="get" className="mt-4 space-y-3">
+            <input type="hidden" name="entity" value={selectedEntity || ""} />
             <div className="flex flex-col gap-2">
               <label htmlFor="expense-year" className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                 Year

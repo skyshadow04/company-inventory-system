@@ -111,7 +111,9 @@ export default function ProfilePage() {
       const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
       if (res.ok) {
         toast.success("Logged out");
-        setTimeout(() => router.push("/"), 700);
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 700);
         return;
       }
       toast.error("Logout failed");

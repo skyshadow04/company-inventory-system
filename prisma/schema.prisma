@@ -25,6 +25,7 @@ model User {
   entity         String         @default("Leadership")
   etisalatBills  EtisalatBill[]
   assetHistories AssetHistory[]
+  group          String          @default("staff")
 }
 
 model Supplier {
