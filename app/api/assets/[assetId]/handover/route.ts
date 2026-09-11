@@ -72,7 +72,7 @@ export async function GET(
     });
   }
 
-  const output = await pdf.save();
+  const output = Buffer.from(await pdf.save());
   const safeAssetName = asset.asset_name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "asset";
 
   return new Response(output, {
