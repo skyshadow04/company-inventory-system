@@ -3,7 +3,7 @@ import path from "node:path";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, selectedEntityFilter } from "@/lib/entityAccess";
+import { getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +13,10 @@ export async function GET(
 
   if (!currentUser) {
     return Response.json({ message: "Authentication required." }, { status: 401 });
+  }
+
+  if (!hasAdminAccess(currentUser)) {
+    return Response.json({ message: "Admin access required." }, { status: 403 });
   }
 
   const assetId = Number((await params).assetId);

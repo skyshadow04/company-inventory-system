@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/entityAccess";
+import { getCurrentUser, hasAdminAccess } from "@/lib/entityAccess";
 import HandoverPreview from "./preview";
 
 export default async function AssetHandoverPage({
@@ -14,6 +14,10 @@ export default async function AssetHandoverPage({
 
   if (!currentUser) {
     redirect("/login");
+  }
+
+  if (!hasAdminAccess(currentUser)) {
+    redirect("/inventoryDashboard/assets");
   }
 
   const assetId = Number((await params).assetId);

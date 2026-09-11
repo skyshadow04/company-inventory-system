@@ -284,13 +284,15 @@ export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 
                   ) : null}
 
                   <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <Link
-                      href={`/inventoryDashboard/assets/${asset.asset_id}/handover?${new URLSearchParams(selectedEntity ? { entity: selectedEntity } : {}).toString()}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
-                    >
-                      <FileText className="h-4 w-4" aria-hidden="true" />
-                      Handover PDF
-                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href={`/inventoryDashboard/assets/${asset.asset_id}/handover?${new URLSearchParams(selectedEntity ? { entity: selectedEntity } : {}).toString()}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
+                      >
+                        <FileText className="h-4 w-4" aria-hidden="true" />
+                        Handover PDF
+                      </Link>
+                    )}
                     {isAdmin && (
                       <>
                         <Link
