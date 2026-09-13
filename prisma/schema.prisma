@@ -28,6 +28,14 @@ model User {
   group          String          @default("staff")
 }
 
+model EntitySettings {
+  id        Int      @id @default(autoincrement())
+  entity    String   @unique
+  theme     String   @default("ocean")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Supplier {
   supplier_id             Int      @id @default(autoincrement())
   supplier_name           String

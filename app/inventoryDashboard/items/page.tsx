@@ -21,6 +21,10 @@ export default async function ItemsDashboardPage({ searchParams }: { searchParam
     redirect("/login");
   }
 
+  if (!hasAdminAccess(currentUser)) {
+    redirect("/inventoryDashboard/assets");
+  }
+
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
   const initialPage = Math.max(1, Number(resolvedSearchParams.page) || 1);

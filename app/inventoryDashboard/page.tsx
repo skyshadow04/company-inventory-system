@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
+import { assetAccessFilter, getCurrentUser, hasAdminAccess, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
 import { EntityFilter } from "@/components/entity-filter";
+import { InventoryBreakdownChart } from "@/components/dashboard/inventory-breakdown-chart";
 
 type DashboardPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
@@ -58,15 +59,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const selectedYear = String(resolvedSearchParams.year ?? "all");
   const selectedMonth = String(resolvedSearchParams.month ?? "all");
   const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
+  const isAdmin = hasAdminAccess(currentUser);
   const superAdmin = isSuperAdmin(currentUser);
   const entityOptions = superAdmin
     ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
     : [];
   const recordFilter = selectedEntityFilter(currentUser, selectedEntity);
+  const assetFilter = assetAccessFilter(currentUser, selectedEntity);
 
   const [assets, suppliers, items, assetTypeBreakdown, itemTypeBreakdown] = await Promise.all([
     prisma.assets.findMany({
-      where: recordFilter,
+      where: assetFilter,
       orderBy: {
         asset_id: "desc",
       },
@@ -77,26 +80,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         supplier_name: "asc",
       },
     }),
-    prisma.items.findMany({
+    isAdmin ? prisma.items.findMany({
       where: recordFilter,
       orderBy: {
         item_delivery_date: "desc",
       },
-    }),
+    }) : Promise.resolve([]),
     prisma.assets.groupBy({
-      where: recordFilter,
+      where: assetFilter,
       by: ["asset_type"],
       _count: {
         asset_id: true,
       },
     }),
-    prisma.items.groupBy({
+    isAdmin ? prisma.items.groupBy({
       where: recordFilter,
       by: ["item_type"],
       _count: {
         item_id: true,
       },
-    }),
+    }) : Promise.resolve([]),
   ]);
 
   const filteredItems = items.filter((item) => {
@@ -131,26 +134,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity || ""} />}
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className={`grid gap-5 ${isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
             Total Assets
           </h2>
           <p className="mt-4 text-4xl font-bold text-slate-900">{assets.length}</p>
-          <div className="mt-4 space-y-2 text-sm text-slate-600">
-            {assetTypeBreakdown.length > 0 ? (
-              assetTypeBreakdown.map((type) => (
-                <div key={type.asset_type} className="flex items-center justify-between gap-3">
-                  <span>{type.asset_type}</span>
-                  <span className="rounded-full bg-sky-100 px-2 py-1 font-semibold text-sky-700">
-                    {type._count.asset_id}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-400">No asset types available.</p>
-            )}
-          </div>
+          <InventoryBreakdownChart
+            data={assetTypeBreakdown.map((type) => ({
+              label: type.asset_type,
+              count: type._count.asset_id,
+            }))}
+            color="var(--color-sky-600)"
+            emptyMessage="No asset types available."
+          />
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -172,7 +169,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        {isAdmin && <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
             Expenses
           </h2>
@@ -227,26 +224,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               Apply filter
             </button>
           </form>
-        </div>
+        </div>}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {isAdmin && <div className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Items by Type</h2>
-          <div className="mt-4 space-y-3">
-            {itemTypeBreakdown.length > 0 ? (
-              itemTypeBreakdown.map((type) => (
-                <div key={type.item_type} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
-                  <span className="font-medium text-slate-700">{type.item_type}</span>
-                  <span className="rounded-full bg-violet-100 px-2.5 py-1 text-sm font-semibold text-violet-700">
-                    {type._count.item_id}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-400">No item types recorded.</p>
-            )}
-          </div>
+          <InventoryBreakdownChart
+            data={itemTypeBreakdown.map((type) => ({
+              label: type.item_type,
+              count: type._count.item_id,
+            }))}
+            color="var(--color-violet-600)"
+            emptyMessage="No item types recorded."
+          />
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -270,7 +261,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

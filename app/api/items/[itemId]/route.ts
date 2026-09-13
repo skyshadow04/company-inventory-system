@@ -13,6 +13,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ite
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    if (!hasAdminAccess(currentUser)) {
+      return NextResponse.json({ message: "Forbidden: Admin access required." }, { status: 403 });
+    }
+
     const item = await prisma.items.findFirst({
       where: { item_id: Number(itemId), ...selectedEntityFilter(currentUser, "all") },
       include: { supplier: true },

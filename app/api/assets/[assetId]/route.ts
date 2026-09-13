@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
-import { getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
+import { assetAccessFilter, getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ assetId: string }> }) {
   try {
@@ -14,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ass
     }
 
     const asset = await prisma.assets.findFirst({
-      where: { asset_id: Number(assetId), ...selectedEntityFilter(currentUser, "all") },
+      where: { asset_id: Number(assetId), ...assetAccessFilter(currentUser, "all") },
     });
 
     if (!asset) {

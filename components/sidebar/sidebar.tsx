@@ -3,21 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Moon, Palette, Sun, X } from "lucide-react";
+import { useDashboardTheme } from "@/components/dashboard/theme-shell";
 
 const navItems = [
   { href: "/inventoryDashboard", label: "Dashboard" },
   { href: "/inventoryDashboard/assets", label: "Assets" },
   { href: "/inventoryDashboard/suppliers", label: "Suppliers" },
-  { href: "/inventoryDashboard/items", label: "Items" },
+  { href: "/inventoryDashboard/items", label: "Items", adminOnly: true },
   { href: "/inventoryDashboard/etisalatbill", label: "Etisalat Bills" },
   { href: "/inventoryDashboard/admin", label: "Admin", adminOnly: true },
+  { href: "/inventoryDashboard/settings", label: "Theme settings", adminOnly: true },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const { darkMode, setDarkMode } = useDashboardTheme();
 
   useEffect(() => {
     let mounted = true;
@@ -103,6 +106,24 @@ export default function Sidebar() {
               );
             })}
         </nav>
+
+          <div className="mt-8 border-t border-slate-200 pt-5">
+            <button
+              type="button"
+              onClick={() => setDarkMode(!darkMode)}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100"
+              aria-pressed={darkMode}
+            >
+              {darkMode ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              <span>{darkMode ? "Light mode" : "Dark mode"}</span>
+            </button>
+            {isAdmin && (
+              <div className="mt-3 flex items-center gap-2 px-3 text-xs text-slate-500">
+                <Palette className="size-3.5" />
+                <span>Entity appearance</span>
+              </div>
+            )}
+          </div>
       </aside>
     </>
   );

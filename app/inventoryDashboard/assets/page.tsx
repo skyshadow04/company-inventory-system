@@ -2,9 +2,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, hasAdminAccess, isSuperAdmin, selectedEntityFilter } from "@/lib/entityAccess";
+import { assetAccessFilter, getCurrentUser, hasAdminAccess, isSuperAdmin } from "@/lib/entityAccess";
 import { EntityFilter } from "@/components/entity-filter";
 import { AssetDashboard, type AssetRecord } from "@/components/dashboard/assets-dashboard";
+import type { ReturnFormUser } from "@/components/dashboard/return-form-prompt";
 
 export default async function AssetsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const cookieStore = await cookies();
@@ -23,19 +24,29 @@ export default async function AssetsPage({ searchParams }: { searchParams?: Prom
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
   const initialPage = Math.max(1, Number(resolvedSearchParams.page) || 1);
+  const isAdmin = hasAdminAccess(currentUser);
   const superAdmin = isSuperAdmin(currentUser);
   const entityOptions = superAdmin
     ? (await prisma.user.findMany({ distinct: ["entity"], select: { entity: true }, orderBy: { entity: "asc" } })).map((user) => user.entity)
     : [];
 
   const assets: AssetRecord[] = await prisma.assets.findMany({
-    where: selectedEntityFilter(currentUser, selectedEntity),
+    where: assetAccessFilter(currentUser, selectedEntity),
     orderBy: {
       asset_id: "desc",
     },
   });
 
-  const isAdmin = hasAdminAccess(currentUser);
+  const userScope = superAdmin
+    ? selectedEntity && selectedEntity !== "all" ? { entity: selectedEntity } : {}
+    : { entity: currentUser.entity };
+  const returnFormUsers: ReturnFormUser[] = isAdmin
+    ? await prisma.user.findMany({
+        where: userScope,
+        select: { id: true, name: true, entity: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -45,16 +56,24 @@ export default async function AssetsPage({ searchParams }: { searchParams?: Prom
           <h1 className="mt-3 text-3xl font-semibold text-slate-900">Assets Dashboard</h1>
           <p className="mt-2 text-sm text-slate-600">View and manage your inventory assets.</p>
         </div>
-        {isAdmin && (
-          <Link href="/inventoryDashboard/assets/addAsset" className="inline-flex rounded-full bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600">
-            Add Asset
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-3">
+          {isAdmin && (
+            <Link href="/inventoryDashboard/assets/addAsset" className="inline-flex rounded-full bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600">
+              Add Asset
+            </Link>
+          )}
+        </div>
       </div>
 
       {superAdmin && <EntityFilter entities={entityOptions} selectedEntity={selectedEntity || ""} />}
 
-      <AssetDashboard assets={assets} isAdmin={isAdmin} selectedEntity={selectedEntity} initialPage={initialPage} />
+      <AssetDashboard
+        assets={assets}
+        isAdmin={isAdmin}
+        selectedEntity={selectedEntity}
+        initialPage={initialPage}
+        returnFormUsers={returnFormUsers}
+      />
     </main>
   );
 }

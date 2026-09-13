@@ -53,6 +53,17 @@ export function selectedEntityFilter(
   return isSuperAdmin(user) ? {} : entityFilter(user);
 }
 
+export function assetAccessFilter(
+  user: { role: string; entity: string; name: string },
+  selectedEntity?: string,
+) {
+  if (isAdminUser(user)) {
+    return selectedEntityFilter(user, selectedEntity);
+  }
+
+  return { entity: user.entity, asset_owner: user.name };
+}
+
 export function hasAdminAccess(user: { role: string }) {
   return isAdminUser(user);
 }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
-import { getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
+import { assetAccessFilter, getCurrentUser, hasAdminAccess, selectedEntityFilter } from "@/lib/entityAccess";
 
 export async function GET(request: Request) {
   const currentUser = await getCurrentUser();
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   const selectedEntity = new URL(request.url).searchParams.get("entity") || "all";
   const assets = await prisma.assets.findMany({
-    where: selectedEntityFilter(currentUser, selectedEntity),
+    where: assetAccessFilter(currentUser, selectedEntity),
     orderBy: {
       asset_id: "desc",
     },

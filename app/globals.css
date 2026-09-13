@@ -129,3 +129,152 @@
     scroll-behavior: smooth;
   }
 }
+
+.dashboard-theme[data-theme="forest"] {
+  --color-sky-50: oklch(0.97 0.03 160);
+  --color-sky-100: oklch(0.93 0.06 160);
+  --color-sky-200: oklch(0.86 0.1 160);
+  --color-sky-400: oklch(0.72 0.16 160);
+  --color-sky-500: oklch(0.64 0.17 160);
+  --color-sky-600: oklch(0.55 0.16 160);
+  --color-sky-700: oklch(0.45 0.13 160);
+}
+
+.dashboard-theme[data-theme="sunset"] {
+  --color-sky-50: oklch(0.98 0.03 55);
+  --color-sky-100: oklch(0.94 0.07 55);
+  --color-sky-200: oklch(0.87 0.12 55);
+  --color-sky-400: oklch(0.76 0.17 55);
+  --color-sky-500: oklch(0.68 0.18 55);
+  --color-sky-600: oklch(0.59 0.18 45);
+  --color-sky-700: oklch(0.49 0.16 40);
+}
+
+.dashboard-theme[data-theme="rose"] {
+  --color-sky-50: oklch(0.98 0.03 10);
+  --color-sky-100: oklch(0.94 0.07 10);
+  --color-sky-200: oklch(0.87 0.12 10);
+  --color-sky-400: oklch(0.74 0.18 10);
+  --color-sky-500: oklch(0.66 0.2 10);
+  --color-sky-600: oklch(0.57 0.2 10);
+  --color-sky-700: oklch(0.48 0.17 10);
+}
+
+.dashboard-theme[data-theme="graphite"] {
+  --color-sky-50: oklch(0.97 0.01 250);
+  --color-sky-100: oklch(0.92 0.02 250);
+  --color-sky-200: oklch(0.84 0.03 250);
+  --color-sky-400: oklch(0.68 0.05 250);
+  --color-sky-500: oklch(0.58 0.06 250);
+  --color-sky-600: oklch(0.49 0.06 250);
+  --color-sky-700: oklch(0.4 0.05 250);
+}
+
+html.dark .bg-white,
+html.dark .bg-white\/95 {
+  background-color: var(--color-card) !important;
+}
+
+html.dark .bg-slate-50 {
+  background-color: var(--color-muted) !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: var(--color-secondary) !important;
+}
+
+html.dark .bg-slate-200 {
+  background-color: var(--color-border) !important;
+}
+
+html.dark .bg-sky-50,
+html.dark .bg-sky-100,
+html.dark .bg-violet-100,
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-100 {
+  background-color: color-mix(in oklch, var(--color-primary) 18%, var(--color-card)) !important;
+}
+
+html.dark .bg-red-50,
+html.dark .bg-red-100 {
+  background-color: color-mix(in oklch, var(--color-destructive) 18%, var(--color-card)) !important;
+}
+
+html.dark .bg-amber-50 {
+  background-color: color-mix(in oklch, oklch(0.75 0.15 85) 18%, var(--color-card)) !important;
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-950,
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: var(--color-foreground) !important;
+}
+
+html.dark .text-slate-200,
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: var(--color-muted-foreground) !important;
+}
+
+html.dark .text-sky-500,
+html.dark .text-sky-600 {
+  color: var(--color-sky-400) !important;
+}
+
+html.dark .text-sky-700,
+html.dark .text-violet-700,
+html.dark .text-emerald-700,
+html.dark .text-rose-700 {
+  color: var(--color-foreground) !important;
+}
+
+html.dark .text-red-700 {
+  color: var(--color-destructive) !important;
+}
+
+html.dark .text-amber-700 {
+  color: oklch(0.82 0.15 85) !important;
+}
+
+html.dark .placeholder\:text-slate-400::placeholder {
+  color: var(--color-muted-foreground) !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-slate-100,
+html.dark .border-sky-100,
+html.dark .border-sky-200,
+html.dark .border-emerald-200,
+html.dark .border-amber-200 {
+  border-color: var(--color-border) !important;
+}
+
+html.dark .divide-slate-200 > :not(:last-child),
+html.dark .divide-slate-100 > :not(:last-child) {
+  border-color: var(--color-border) !important;
+}
+
+html.dark .border-red-200 {
+  border-color: color-mix(in oklch, var(--color-destructive) 45%, var(--color-border)) !important;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-sky-50\/50:hover,
+html.dark .hover\:bg-sky-100:hover,
+html.dark .hover\:bg-emerald-100:hover,
+html.dark .hover\:bg-red-100:hover {
+  background-color: var(--color-accent) !important;
+}
+
+html.dark .from-slate-100 {
+  --tw-gradient-from: var(--color-secondary) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in oklch, var(--color-secondary), transparent) var(--tw-gradient-to-position) !important;
+}
+
+html.dark .to-slate-200 {
+  --tw-gradient-to: var(--color-border) var(--tw-gradient-to-position) !important;
+}

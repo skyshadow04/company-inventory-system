@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { FileText } from "lucide-react";
+import { ReturnFormPrompt, type ReturnFormUser } from "@/components/dashboard/return-form-prompt";
 
 export type AssetRecord = {
   asset_id: number;
@@ -14,6 +15,7 @@ export type AssetRecord = {
   asset_status: string;
   asset_type: string;
   asset_image_link: string | null;
+  entity: string;
 };
 
 type AssetHistoryRecord = {
@@ -30,9 +32,10 @@ interface AssetDashboardProps {
   isAdmin: boolean;
   selectedEntity?: string;
   initialPage?: number;
+  returnFormUsers: ReturnFormUser[];
 }
 
-export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 1 }: AssetDashboardProps) {
+export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 1, returnFormUsers }: AssetDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOwner, setSelectedOwner] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -176,6 +179,7 @@ export function AssetDashboard({ assets, isAdmin, selectedEntity, initialPage = 
             )}
           </div>
 
+          <ReturnFormPrompt assets={assets} users={returnFormUsers} isAdmin={isAdmin} />
           <button
             type="button"
             onClick={handleExport}

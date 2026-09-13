@@ -12,6 +12,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
+  if (!hasAdminAccess(currentUser)) {
+    return NextResponse.json({ message: "Forbidden: Admin access required." }, { status: 403 });
+  }
+
   const selectedEntity = new URL(request.url).searchParams.get("entity") || "all";
   const items = await prisma.items.findMany({
     where: selectedEntityFilter(currentUser, selectedEntity),
