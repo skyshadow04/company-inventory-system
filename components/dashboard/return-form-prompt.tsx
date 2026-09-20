@@ -66,7 +66,7 @@ export function ReturnFormPrompt({
     });
   }
 
-  function downloadForm() {
+  function reviewForm() {
     if (selectedIds.size === 0) {
       return;
     }
@@ -75,7 +75,7 @@ export function ReturnFormPrompt({
     if (isAdmin && selectedUserId) {
       params.set("userId", selectedUserId);
     }
-    window.location.href = `/api/assets/my-return-form?${params.toString()}`;
+    window.location.href = `/inventoryDashboard/assets/return-form?${params.toString()}`;
   }
 
   return (
@@ -180,12 +180,12 @@ export function ReturnFormPrompt({
                 </button>
                 <button
                   type="button"
-                  onClick={downloadForm}
+                  onClick={reviewForm}
                   disabled={selectedIds.size === 0}
                   className="inline-flex items-center gap-2 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download className="size-4" aria-hidden="true" />
-                  Download PDF
+                  Review and print
                 </button>
               </div>
             </div>

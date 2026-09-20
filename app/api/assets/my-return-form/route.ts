@@ -207,11 +207,12 @@ export async function GET(request: Request) {
 
   const output = Buffer.from(await pdf.save());
   const safeName = targetUser.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "user";
+  const disposition = requestUrl.searchParams.get("download") === "1" ? "attachment" : "inline";
 
   return new Response(output, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="asset-return-form-${safeName}.pdf"`,
+      "Content-Disposition": `${disposition}; filename="asset-return-form-${safeName}.pdf"`,
       "Cache-Control": "no-store",
     },
   });
