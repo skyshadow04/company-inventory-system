@@ -63,6 +63,32 @@ model Items {
   entity               String   @default("Leadership")
 }
 
+model Printer {
+  printer_id   Int            @id @default(autoincrement())
+  printer_name String
+  entity       String         @default("Leadership")
+  toners       PrinterToner[]
+  drums        PrinterDrum[]
+}
+
+model PrinterToner {
+  toner_id       Int     @id @default(autoincrement())
+  printer_id     Int
+  toner_name     String
+  toner_code     String
+  toner_quantity Int     @default(0)
+  printer        Printer @relation(fields: [printer_id], references: [printer_id], onDelete: Cascade)
+}
+
+model PrinterDrum {
+  drum_id       Int     @id @default(autoincrement())
+  printer_id    Int
+  drum_name     String
+  drum_code     String
+  drum_quantity Int     @default(0)
+  printer       Printer @relation(fields: [printer_id], references: [printer_id], onDelete: Cascade)
+}
+
 model Assets {
   asset_id            Int            @id @default(autoincrement())
   asset_name          String

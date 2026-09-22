@@ -11,6 +11,7 @@ const navItems = [
   { href: "/inventoryDashboard/assets", label: "Assets" },
   { href: "/inventoryDashboard/suppliers", label: "Suppliers" },
   { href: "/inventoryDashboard/items", label: "Items", adminOnly: true },
+  { href: "/inventoryDashboard/printers", label: "Printers", adminOnly: true },
   { href: "/inventoryDashboard/etisalatbill", label: "Etisalat Bills" },
   { href: "/inventoryDashboard/admin", label: "Admin", adminOnly: true },
   { href: "/inventoryDashboard/settings", label: "Theme settings", adminOnly: true },

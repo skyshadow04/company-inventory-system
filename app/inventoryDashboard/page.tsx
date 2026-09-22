@@ -67,7 +67,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const recordFilter = selectedEntityFilter(currentUser, selectedEntity);
   const assetFilter = assetAccessFilter(currentUser, selectedEntity);
 
-  const [assets, suppliers, items, assetTypeBreakdown, itemTypeBreakdown] = await Promise.all([
+  const [assets, suppliers, items, printers, assetTypeBreakdown, itemTypeBreakdown] = await Promise.all([
     prisma.assets.findMany({
       where: assetFilter,
       orderBy: {
@@ -85,6 +85,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       orderBy: {
         item_delivery_date: "desc",
       },
+    }) : Promise.resolve([]),
+    isAdmin ? prisma.printer.findMany({
+      where: recordFilter,
+      include: {
+        toners: {
+          orderBy: { toner_name: "asc" },
+        },
+        drums: {
+          orderBy: { drum_name: "asc" },
+        },
+      },
+      orderBy: { printer_name: "asc" },
     }) : Promise.resolve([]),
     prisma.assets.groupBy({
       where: assetFilter,
@@ -262,6 +274,96 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
         </div>
       </div>}
+
+      {isAdmin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Toner stock</h2>
+            <p className="mt-1 text-sm text-slate-500">Use the toner code when preparing your next order.</p>
+          </div>
+          <span className="text-sm text-slate-500">
+            {printers.reduce((total, printer) => total + printer.toners.length, 0)} toner types
+          </span>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[620px] text-left text-sm">
+            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3 font-medium">Printer</th>
+                <th className="px-3 py-3 font-medium">Toner</th>
+                <th className="px-3 py-3 font-medium">Toner code</th>
+                <th className="px-3 py-3 text-right font-medium">Stock</th>
+                <th className="px-3 py-3 text-right font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {printers.flatMap((printer) => printer.toners.map((toner) => (
+                <tr key={toner.toner_id}>
+                  <td className="px-3 py-3 font-medium text-slate-800">{printer.printer_name}</td>
+                  <td className="px-3 py-3 text-slate-600">{toner.toner_name}</td>
+                  <td className="px-3 py-3 font-mono text-slate-700">{toner.toner_code}</td>
+                  <td className="px-3 py-3 text-right font-semibold text-slate-900">{toner.toner_quantity}</td>
+                  <td className="px-3 py-3 text-right">
+                    {toner.toner_quantity === 0 ? (
+                      <span className="font-semibold text-red-600">Order</span>
+                    ) : (
+                      <span className="text-emerald-600">In stock</span>
+                    )}
+                  </td>
+                </tr>
+              )))}
+            </tbody>
+          </table>
+          {printers.every((printer) => printer.toners.length === 0) && (
+            <p className="py-8 text-center text-sm text-slate-400">No toner records available.</p>
+          )}
+        </div>
+      </section>}
+
+      {isAdmin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Drum stock</h2>
+            <p className="mt-1 text-sm text-slate-500">Review drum codes and identify drums that need ordering.</p>
+          </div>
+          <span className="text-sm text-slate-500">
+            {printers.reduce((total, printer) => total + printer.drums.length, 0)} drum types
+          </span>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[620px] text-left text-sm">
+            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3 font-medium">Printer</th>
+                <th className="px-3 py-3 font-medium">Drum</th>
+                <th className="px-3 py-3 font-medium">Drum code</th>
+                <th className="px-3 py-3 text-right font-medium">Stock</th>
+                <th className="px-3 py-3 text-right font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {printers.flatMap((printer) => printer.drums.map((drum) => (
+                <tr key={drum.drum_id}>
+                  <td className="px-3 py-3 font-medium text-slate-800">{printer.printer_name}</td>
+                  <td className="px-3 py-3 text-slate-600">{drum.drum_name}</td>
+                  <td className="px-3 py-3 font-mono text-slate-700">{drum.drum_code}</td>
+                  <td className="px-3 py-3 text-right font-semibold text-slate-900">{drum.drum_quantity}</td>
+                  <td className="px-3 py-3 text-right">
+                    {drum.drum_quantity === 0 ? (
+                      <span className="font-semibold text-red-600">Order</span>
+                    ) : (
+                      <span className="text-emerald-600">In stock</span>
+                    )}
+                  </td>
+                </tr>
+              )))}
+            </tbody>
+          </table>
+          {printers.every((printer) => printer.drums.length === 0) && (
+            <p className="py-8 text-center text-sm text-slate-400">No drum records available.</p>
+          )}
+        </div>
+      </section>}
     </div>
   );
 }
