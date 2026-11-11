@@ -56,8 +56,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const selectedYear = String(resolvedSearchParams.year ?? "all");
-  const selectedMonth = String(resolvedSearchParams.month ?? "all");
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  const selectedYear = String(resolvedSearchParams.year ?? currentYear);
+  const selectedMonth = String(resolvedSearchParams.month ?? currentMonth);
   const selectedEntity = typeof resolvedSearchParams.entity === "string" ? resolvedSearchParams.entity : undefined;
   const isAdmin = hasAdminAccess(currentUser);
   const superAdmin = isSuperAdmin(currentUser);
@@ -131,7 +134,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }, 0);
 
   const yearOptions = Array.from(
-    new Set(items.map((item) => new Date(item.item_delivery_date).getFullYear())),
+    new Set([currentYear, ...items.map((item) => new Date(item.item_delivery_date).getFullYear())]),
   ).sort((a, b) => b - a);
 
   return (
